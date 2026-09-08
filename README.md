@@ -43,3 +43,13 @@ npx serve dist
 - `src/build.mjs` 构建脚本
 - `assets/style.css` 样式
 - `dist/` 构建产物（不提交）
+
+## 部署工作流（重要）
+
+当前 OAuth token 缺少 `workflow` 权限，无法直推 `.github/workflows/`。Pages 已设为 Actions，请手动添加工作流：
+
+1. 打开：https://github.com/lazyalexander/note/new/main?filename=.github/workflows/pages.yml
+2. 把仓库根目录 `pages.workflow.yml` 的全部内容粘贴进去
+3. Commit 到 `main`
+
+或本地：`gh auth refresh -h github.com -s workflow` 后把 `pages.workflow.yml` 复制为 `.github/workflows/pages.yml` 再 push。

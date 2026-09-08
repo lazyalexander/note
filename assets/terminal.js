@@ -9,11 +9,10 @@
 
   let matches = [];
   let selected = 0;
-  let mode = null; // "goto" | "tag" | null
 
   function parseLine(raw) {
-    const line = String(raw || "").trimStart();
-    let m = line.match(/^\/?help(?:\s+.*)?$/i);
+    const line = String(raw || "").trim();
+    let m = line.match(/^\/?help$/i);
     if (m) return { kind: "help" };
     m = line.match(/^\/?goto(?:\s+(.*))?$/i);
     if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
@@ -37,16 +36,57 @@
     return Array.isArray(p.tags) ? p.tags : [];
   }
 
+  function normalizeTag(t) {
+    return String(t || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^@/, "");
+  }
+
+  function postHasTag(p, atom) {
+    const want = normalizeTag(atom);
+    if (!want) return false;
+    return postTags(p).some(function (t) {
+      return normalizeTag(t) === want;
+    });
+  }
+
+  function postHasTagFuzzy(p, atom) {
+    const want = normalizeTag(atom);
+    if (!want) return false;
+    return postTags(p).some(function (t) {
+      return normalizeTag(t).indexOf(want) !== -1;
+    });
+  }
+
+  /** /tag a&b||c  =>  (a AND b) OR c ; spaces optional; @ optional */
   function filterPostsByTag(query) {
-    const q = String(query || "").trim().toLowerCase().replace(/^@/, "");
+    const q = String(query || "").trim();
     if (!q) {
       return posts.filter(function (p) {
         return postTags(p).length > 0;
       });
     }
+
+    const hasOps = /(?:\||\&)/.test(q);
+    const orGroups = q.split(/\|\|/).map(function (g) {
+      return g.trim();
+    });
+
     return posts.filter(function (p) {
-      return postTags(p).some(function (t) {
-        return String(t).toLowerCase().indexOf(q) !== -1;
+      return orGroups.some(function (group) {
+        if (!group) return false;
+        const andAtoms = group.split(/&/).map(function (a) {
+          return a.trim();
+        });
+        if (hasOps) {
+          return andAtoms.every(function (atom) {
+            return atom && postHasTag(p, atom);
+          });
+        }
+        return andAtoms.every(function (atom) {
+          return atom && postHasTagFuzzy(p, atom);
+        });
       });
     });
   }
@@ -127,10 +167,48 @@
     echo.hidden = !msg;
   }
 
+  function goTo(post) {
+    if (!post || !post.href) return;
+    // Resolve against <base href> so /note/ project Pages works reliably.
+    var a = document.createElement("a");
+    a.href = post.href;
+    window.location.assign(a.href);
+  }
+
+  function findHelpPost() {
+    var byStem = posts.filter(function (p) {
+      return String(p.stem).toLowerCase() === "00-help";
+    });
+    if (byStem.length) return byStem[0];
+    var byTag = posts.filter(function (p) {
+      return postTags(p).some(function (t) {
+        return normalizeTag(t) === "help";
+      });
+    });
+    return byTag[0] || null;
+  }
+
+  function openHelp() {
+    var helpPost = findHelpPost();
+    if (!helpPost) {
+      setEcho("help post not found", true);
+      return false;
+    }
+    goTo(helpPost);
+    return true;
+  }
 
   function refresh() {
     const parsed = parseLine(input.value);
-    mode = parsed.kind === "goto" || parsed.kind === "tag" ? parsed.kind : null;
+
+    // Auto-jump as soon as the line is exactly /help (or help).
+    if (parsed.kind === "help") {
+      matches = [];
+      selected = 0;
+      renderSuggest();
+      openHelp();
+      return;
+    }
 
     if (parsed.kind === "goto") {
       if (parsed.query === null) {
@@ -157,26 +235,6 @@
 
     if (selected >= matches.length) selected = Math.max(0, matches.length - 1);
     renderSuggest();
-  }
-
-  function goTo(post) {
-    if (!post || !post.href) return;
-    var base = typeof window.__BASE__ === "string" ? window.__BASE__ : "";
-    var rel = String(post.href).replace(/^\//, "");
-    window.location.href = (base || "") + "/" + rel;
-  }
-
-  function findHelpPost() {
-    var byStem = posts.filter(function (p) {
-      return String(p.stem).toLowerCase() === "00-help";
-    });
-    if (byStem.length) return byStem[0];
-    var byTag = posts.filter(function (p) {
-      return postTags(p).some(function (t) {
-        return String(t).toLowerCase() === "help";
-      });
-    });
-    return byTag[0] || null;
   }
 
   function cycle(delta) {
@@ -243,12 +301,7 @@
     if (!raw) return;
 
     if (parsed.kind === "help") {
-      var helpPost = findHelpPost();
-      if (!helpPost) {
-        setEcho("help post not found", true);
-        return;
-      }
-      goTo(helpPost);
+      openHelp();
       return;
     }
 

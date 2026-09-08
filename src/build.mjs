@@ -171,7 +171,7 @@ async function main() {
 </div></div>`;
 
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script src="assets/terminal.js"></script>`;
+<script src="assets/terminal.js?v=3"></script>`;
 
   await writeFile(
     join(distDir, "index.html"),

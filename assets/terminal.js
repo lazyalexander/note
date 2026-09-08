@@ -498,11 +498,6 @@
     }
   });
 
-  if (!String(input.value || "").trim()) {
-    input.value = "/welcome";
-  }
   input.focus();
-  // Select all so user can overwrite; auto-run welcome on first paint.
-  input.select();
   refresh();
 })();

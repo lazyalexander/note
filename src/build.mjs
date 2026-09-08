@@ -159,12 +159,11 @@ async function main() {
 <div class="term">
   <div class="term-line">
     <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
-    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/goto · /tag" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/help" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
   </div>
   <ul class="suggest" id="suggest" role="listbox" hidden></ul>
   <pre class="term-echo" id="term-echo" hidden></pre>
 </div>
-<p class="hint">commands: /goto &lt;title&gt; · /tag &lt;tag&gt; · ↑↓ / Tab cycle · Enter open · Esc clear</p>
 <div class="ls-block">
   <div class="prompt">guest@note:<span class="cwd">~/note</span>$ ls posts/</div>
   <ul class="menu">${items}</ul>

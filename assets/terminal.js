@@ -13,7 +13,9 @@
 
   function parseLine(raw) {
     const line = String(raw || "").trimStart();
-    let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
+    let m = line.match(/^\/?help(?:\s+.*)?$/i);
+    if (m) return { kind: "help" };
+    m = line.match(/^\/?goto(?:\s+(.*))?$/i);
     if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
     m = line.match(/^\/?tag(?:\s+(.*))?$/i);
     if (m) return { kind: "tag", query: m[1] == null ? null : m[1] };
@@ -125,20 +127,6 @@
     echo.hidden = !msg;
   }
 
-  function allTagsHint() {
-    const set = {};
-    posts.forEach(function (p) {
-      postTags(p).forEach(function (t) {
-        set[String(t).toLowerCase()] = t;
-      });
-    });
-    const list = Object.keys(set)
-      .sort()
-      .map(function (k) {
-        return "@" + set[k];
-      });
-    return list.length ? "tags: " + list.join(" ") : "no tags yet";
-  }
 
   function refresh() {
     const parsed = parseLine(input.value);
@@ -176,6 +164,19 @@
     var base = typeof window.__BASE__ === "string" ? window.__BASE__ : "";
     var rel = String(post.href).replace(/^\//, "");
     window.location.href = (base || "") + "/" + rel;
+  }
+
+  function findHelpPost() {
+    var byStem = posts.filter(function (p) {
+      return String(p.stem).toLowerCase() === "00-help";
+    });
+    if (byStem.length) return byStem[0];
+    var byTag = posts.filter(function (p) {
+      return postTags(p).some(function (t) {
+        return String(t).toLowerCase() === "help";
+      });
+    });
+    return byTag[0] || null;
   }
 
   function cycle(delta) {
@@ -241,9 +242,18 @@
     const raw = input.value.trim();
     if (!raw) return;
 
+    if (parsed.kind === "help") {
+      var helpPost = findHelpPost();
+      if (!helpPost) {
+        setEcho("help post not found", true);
+        return;
+      }
+      goTo(helpPost);
+      return;
+    }
+
     if (parsed.kind === "goto") {
       if (parsed.query === null) {
-        setEcho("usage: /goto <title>", true);
         matches = [];
         renderSuggest();
         return;
@@ -254,8 +264,8 @@
 
     if (parsed.kind === "tag") {
       if (parsed.query === null) {
-        setEcho("usage: /tag <tag>  ·  " + allTagsHint(), false);
-        matches = [];
+        matches = filterPostsByTag("");
+        selected = 0;
         renderSuggest();
         return;
       }
@@ -263,34 +273,6 @@
       return;
     }
 
-    if (/^help$/i.test(raw) || raw === "?") {
-      setEcho(
-        "commands: /goto <title>  ·  /tag <tag>  ·  ↑↓/Tab cycle  ·  Enter open",
-        false
-      );
-      return;
-    }
-    if (/^ls$/i.test(raw) || /^ls\s+posts\/?$/i.test(raw)) {
-      setEcho(
-        posts
-          .map(function (p, i) {
-            const tags = postTags(p);
-            const tagStr = tags.length
-              ? "  [" +
-                tags
-                  .map(function (t) {
-                    return "@" + t;
-                  })
-                  .join(" ") +
-                "]"
-              : "";
-            return String(i + 1).padStart(2, "0") + "  " + p.title + tagStr;
-          })
-          .join("\n") || "(empty)",
-        false
-      );
-      return;
-    }
     if (/^clear$/i.test(raw)) {
       input.value = "";
       setEcho("");
@@ -299,7 +281,7 @@
       return;
     }
 
-    setEcho("command not found: " + raw + "  (try /goto or /tag)", true);
+    setEcho("command not found: " + raw, true);
   });
 
   document.addEventListener("keydown", function (e) {

@@ -147,19 +147,25 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=9"></script>`;
+<script type="module" src="assets/terminal.js?v=10"></script>`;
 
+  const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
   const eggBody = `<div class="box egg-box"><div class="box-title">~/lost</div><div class="box-body">
 <p class="egg-msg">no such file — playing radio instead</p>
+<p class="egg-msg">embed may ask you to sign in; open on YouTube instead: <a href="https://www.youtube.com/watch?v=bIiIrXM7BUA&list=RDbIiIrXM7BUA&start_radio=1" target="_blank" rel="noopener noreferrer">watch on YouTube</a></p>
 <div class="egg-video">
 <iframe
-  src="https://www.youtube.com/embed/bIiIrXM7BUA?list=RDbIiIrXM7BUA&autoplay=1&rel=0"
+  src="https://www.youtube-nocookie.com/embed/bIiIrXM7BUA?list=RDbIiIrXM7BUA&rel=0"
   title="YouTube video"
   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
   allowfullscreen
   loading="lazy"
   referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
+</div></div>
+<div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.js</div><div class="box-body">
+<p class="egg-msg">source · <a href="assets/term-engine.js">raw file</a></p>
+<pre class="egg-source"><code>${escapeHtml(engineSrc)}</code></pre>
 </div></div>`;
   await writeFile(
     join(distDir, "egg.html"),

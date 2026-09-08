@@ -35,7 +35,6 @@ function extractTitle(md, stem) {
   return m ? m[1].trim() : stem;
 }
 
-/** Tags sit on the first non-empty line after H1; optional blank line allowed. */
 function extractTags(md) {
   const lines = md.split(/\r?\n/);
   let h1Index = -1;
@@ -71,6 +70,17 @@ function href(path) {
   return baseHref + path.replace(/^\//, "");
 }
 
+function termBarHtml() {
+  return `<div class="term-bar"><div class="term-bar-inner"><div class="term">
+  <div class="term-line">
+    <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
+    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/welcome" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+  </div>
+  <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+  <pre class="term-echo" id="term-echo" hidden></pre>
+</div></div></div>`;
+}
+
 function layout({ title, body, back, scripts }) {
   const backLink = back
     ? `<a class="back" href="${href("")}">&lt;-- back</a>`
@@ -86,10 +96,11 @@ function layout({ title, body, back, scripts }) {
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+${termBarHtml()}
 <div class="wrap">
 ${backLink}
 ${body}
-<p class="footer">note // static tui blog</p>
+<p class="footer">note // tokyo night tui</p>
 </div>
 ${scriptTags}
 </body>
@@ -127,18 +138,22 @@ async function main() {
 
   posts.sort((a, b) => a.key - b.key || a.stem.localeCompare(b.stem));
 
-  for (const post of posts) {
-    const body = `<div class="box"><div class="box-title">post/${escapeHtml(post.stem)}.md</div><div class="box-body"><article class="post">${post.htmlBody}</article></div></div>`;
-    const page = layout({ title: post.title, body, back: true });
-    await writeFile(join(distDir, "posts", post.outName), page);
-  }
-
   const postsIndex = posts.map((p) => ({
     title: p.title,
     stem: p.stem,
     href: `posts/${p.outName}`,
     tags: p.tags,
   }));
+
+  const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
+  const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
+<script type="module" src="assets/terminal.js?v=7"></script>`;
+
+  for (const post of posts) {
+    const body = `<div class="box"><div class="box-title">post/${escapeHtml(post.stem)}.md</div><div class="box-body"><article class="post">${post.htmlBody}</article></div></div>`;
+    const page = layout({ title: post.title, body, back: true, scripts });
+    await writeFile(join(distDir, "posts", post.outName), page);
+  }
 
   await writeFile(
     join(distDir, "posts.json"),
@@ -155,25 +170,12 @@ async function main() {
     })
     .join("\n");
 
-  const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
-
   const indexBody = `<div class="box"><div class="box-title">~/note</div><div class="box-body">
-<div class="term">
-  <div class="term-line">
-    <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
-    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/welcome" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
-  </div>
-  <ul class="suggest" id="suggest" role="listbox" hidden></ul>
-  <pre class="term-echo" id="term-echo" hidden></pre>
-</div>
 <div class="ls-block">
   <div class="prompt">guest@note:<span class="cwd">~/note</span>$ ls posts/</div>
   <ul class="menu">${items}</ul>
 </div>
 </div></div>`;
-
-  const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=6"></script>`;
 
   await writeFile(
     join(distDir, "index.html"),

@@ -1,6 +1,4 @@
-import {
-  createTermEngine,
-} from "./term-engine.js";
+import { createTermEngine } from "./term-engine.js";
 
 (function () {
   "use strict";
@@ -124,19 +122,7 @@ import {
 
   function refresh() {
     if (input.isComposing) return;
-    const line = input.value;
-    const parsedKind = engine.parseLine(line).kind;
-
-    // Auto-run exact /help or /welcome when fully typed.
-    if (parsedKind === "help" || parsedKind === "welcome") {
-      matches = [];
-      selected = 0;
-      renderSuggest();
-      applyAction(engine.submit(line, selected));
-      return;
-    }
-
-    const result = engine.suggest(line);
+    const result = engine.suggest(input.value);
     if (result.error) setEcho(result.error, true);
     else setEcho("");
     matches = result.matches || [];
@@ -150,24 +136,15 @@ import {
     highlightOnly();
   }
 
-  // Critical: browser Back often restores this page from bfcache with JS
-  // state intact. beginNavigate() left navigating=true, so the shell looked dead.
   function reviveAfterHistory() {
     engine.resetNavigation();
   }
   window.addEventListener("pageshow", reviveAfterHistory);
-  window.addEventListener("pageshow", function (e) {
-    if (e.persisted) reviveAfterHistory();
-  });
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible") reviveAfterHistory();
   });
 
   input.addEventListener("input", refresh);
-  input.addEventListener("keyup", function () {
-    const k = engine.parseLine(input.value).kind;
-    if (k === "help" || k === "welcome") refresh();
-  });
   input.addEventListener("compositionend", refresh);
 
   input.addEventListener("keydown", function (e) {
@@ -210,7 +187,6 @@ import {
     if (e.key.length === 1 || e.key === "Backspace") input.focus();
   });
 
-  // Ensure a stale lock never survives a soft restore.
   reviveAfterHistory();
   input.focus();
   refresh();

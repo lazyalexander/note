@@ -7,14 +7,16 @@
   const echo = document.getElementById("term-echo");
   if (!input || !suggest) return;
 
+  const TAG_EXPR_MAX = 64;
   let matches = [];
   let selected = 0;
+  let navigating = false;
 
   function parseLine(raw) {
     const line = String(raw || "").trim();
-    let m = line.match(/^\/?help$/i);
-    if (m) return { kind: "help" };
-    m = line.match(/^\/?goto(?:\s+(.*))?$/i);
+    if (/^\/?help$/i.test(line)) return { kind: "help" };
+    if (/^\/?welcome$/i.test(line)) return { kind: "welcome" };
+    let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
     if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
     m = line.match(/^\/?tag(?:\s+(.*))?$/i);
     if (m) return { kind: "tag", query: m[1] == null ? null : m[1] };
@@ -59,7 +61,110 @@
     });
   }
 
-  /** /tag a&b||c  =>  (a AND b) OR c ; spaces optional; @ optional */
+  function tokenizeTagExpr(src) {
+    const s = String(src || "");
+    const tokens = [];
+    let i = 0;
+    while (i < s.length) {
+      if (/\s/.test(s[i])) {
+        i++;
+        continue;
+      }
+      if (s[i] === "(" || s[i] === ")") {
+        tokens.push({ type: s[i] });
+        i++;
+        continue;
+      }
+      if (s[i] === "&") {
+        tokens.push({ type: "&" });
+        i++;
+        continue;
+      }
+      if (s[i] === "|" && s[i + 1] === "|") {
+        tokens.push({ type: "||" });
+        i += 2;
+        continue;
+      }
+      const m = s.slice(i).match(/^@?[\w\-\u4e00-\u9fff]+/);
+      if (m) {
+        tokens.push({ type: "tag", value: m[0] });
+        i += m[0].length;
+        continue;
+      }
+      throw new Error("bad token near: " + s.slice(i, i + 8));
+    }
+    return tokens;
+  }
+
+  function parseTagExpr(src) {
+    const tokens = tokenizeTagExpr(src);
+    let pos = 0;
+
+    function peek() {
+      return tokens[pos] || null;
+    }
+    function take(type) {
+      const t = peek();
+      if (!t || (type && t.type !== type)) return null;
+      pos++;
+      return t;
+    }
+
+    function parsePrimary() {
+      if (take("(")) {
+        const node = parseOr();
+        if (!take(")")) throw new Error("missing )");
+        return node;
+      }
+      const t = take("tag");
+      if (!t) throw new Error("expected tag");
+      return { type: "tag", value: t.value };
+    }
+
+    function parseAnd() {
+      let node = parsePrimary();
+      while (peek() && peek().type === "&") {
+        take("&");
+        node = { type: "&", left: node, right: parsePrimary() };
+      }
+      return node;
+    }
+
+    function parseOr() {
+      let node = parseAnd();
+      while (peek() && peek().type === "||") {
+        take("||");
+        node = { type: "||", left: node, right: parseAnd() };
+      }
+      return node;
+    }
+
+    if (!tokens.length) throw new Error("empty");
+    const tree = parseOr();
+    if (pos !== tokens.length) throw new Error("trailing input");
+    return tree;
+  }
+
+  function evalTagNode(node, p, fuzzy) {
+    if (!node) return false;
+    if (node.type === "tag") {
+      return fuzzy ? postHasTagFuzzy(p, node.value) : postHasTag(p, node.value);
+    }
+    if (node.type === "&") {
+      return evalTagNode(node.left, p, fuzzy) && evalTagNode(node.right, p, fuzzy);
+    }
+    if (node.type === "||") {
+      return evalTagNode(node.left, p, fuzzy) || evalTagNode(node.right, p, fuzzy);
+    }
+    return false;
+  }
+
+  function exprHasOps(node) {
+    if (!node) return false;
+    if (node.type === "tag") return false;
+    return true;
+  }
+
   function filterPostsByTag(query) {
     const q = String(query || "").trim();
     if (!q) {
@@ -67,28 +172,20 @@
         return postTags(p).length > 0;
       });
     }
-
-    const hasOps = /(?:\||\&)/.test(q);
-    const orGroups = q.split(/\|\|/).map(function (g) {
-      return g.trim();
-    });
-
-    return posts.filter(function (p) {
-      return orGroups.some(function (group) {
-        if (!group) return false;
-        const andAtoms = group.split(/&/).map(function (a) {
-          return a.trim();
-        });
-        if (hasOps) {
-          return andAtoms.every(function (atom) {
-            return atom && postHasTag(p, atom);
-          });
-        }
-        return andAtoms.every(function (atom) {
-          return atom && postHasTagFuzzy(p, atom);
-        });
+    if (q.length > TAG_EXPR_MAX) {
+      setEcho("tag expr max " + TAG_EXPR_MAX + " chars", true);
+      return [];
+    }
+    try {
+      const tree = parseTagExpr(q);
+      const fuzzy = !exprHasOps(tree);
+      return posts.filter(function (p) {
+        return evalTagNode(tree, p, fuzzy);
       });
-    });
+    } catch (err) {
+      setEcho("tag parse: " + (err && err.message ? err.message : "error"), true);
+      return [];
+    }
   }
 
   function escapeHtml(s) {
@@ -130,9 +227,7 @@
         '</span><span class="suggest-title">' +
         escapeHtml(p.title) +
         "</span>" +
-        (tagsHtml
-          ? '<span class="suggest-tags">' + tagsHtml + "</span>"
-          : "") +
+        (tagsHtml ? '<span class="suggest-tags">' + tagsHtml + "</span>" : "") +
         '<span class="suggest-stem">' +
         escapeHtml(p.stem) +
         "</span>";
@@ -168,47 +263,95 @@
   }
 
   function goTo(post) {
-    if (!post || !post.href) return;
-    // Resolve against <base href> so /note/ project Pages works reliably.
+    if (!post || !post.href || navigating) return;
+    navigating = true;
     var a = document.createElement("a");
     a.href = post.href;
     window.location.assign(a.href);
   }
 
+  function findPostByStem(stem) {
+    var want = String(stem || "").toLowerCase();
+    var hit = posts.filter(function (p) {
+      return String(p.stem).toLowerCase() === want;
+    });
+    if (hit.length) return hit[0];
+    hit = posts.filter(function (p) {
+      return String(p.stem).toLowerCase().indexOf(want) !== -1;
+    });
+    return hit[0] || null;
+  }
+
   function findHelpPost() {
-    var byStem = posts.filter(function (p) {
-      return String(p.stem).toLowerCase() === "00-help";
-    });
-    if (byStem.length) return byStem[0];
-    var byTag = posts.filter(function (p) {
-      return postTags(p).some(function (t) {
-        return normalizeTag(t) === "help";
-      });
-    });
-    return byTag[0] || null;
+    return (
+      findPostByStem("00-help") ||
+      posts.filter(function (p) {
+        return postTags(p).some(function (t) {
+          return normalizeTag(t) === "help";
+        });
+      })[0] ||
+      null
+    );
+  }
+
+  function findWelcomePost() {
+    return (
+      findPostByStem("01-welcome") ||
+      posts.filter(function (p) {
+        return postTags(p).some(function (t) {
+          return normalizeTag(t) === "welcome";
+        });
+      })[0] ||
+      null
+    );
   }
 
   function openHelp() {
-    var helpPost = findHelpPost();
-    if (!helpPost) {
+    var post = findHelpPost();
+    if (!post) {
       setEcho("help post not found", true);
       return false;
     }
-    goTo(helpPost);
+    goTo(post);
     return true;
   }
 
-  function refresh() {
-    const parsed = parseLine(input.value);
+  function openWelcome() {
+    var post = findWelcomePost();
+    if (!post) {
+      setEcho("welcome post not found", true);
+      return false;
+    }
+    goTo(post);
+    return true;
+  }
 
-    // Auto-jump as soon as the line is exactly /help (or help).
+  function tryAutoCommand() {
+    if (navigating) return true;
+    if (input.composing || input.isComposing) return false;
+    var parsed = parseLine(input.value);
     if (parsed.kind === "help") {
       matches = [];
       selected = 0;
       renderSuggest();
       openHelp();
-      return;
+      return true;
     }
+    if (parsed.kind === "welcome") {
+      matches = [];
+      selected = 0;
+      renderSuggest();
+      openWelcome();
+      return true;
+    }
+    return false;
+  }
+
+  function refresh() {
+    if (tryAutoCommand()) return;
+
+    const parsed = parseLine(input.value);
+    setEcho("");
 
     if (parsed.kind === "goto") {
       if (parsed.query === null) {
@@ -262,6 +405,12 @@
   }
 
   input.addEventListener("input", refresh);
+  input.addEventListener("keyup", function () {
+    tryAutoCommand();
+  });
+  input.addEventListener("compositionend", function () {
+    refresh();
+  });
 
   input.addEventListener("keydown", function (e) {
     const parsed = parseLine(input.value);
@@ -302,6 +451,10 @@
 
     if (parsed.kind === "help") {
       openHelp();
+      return;
+    }
+    if (parsed.kind === "welcome") {
+      openWelcome();
       return;
     }
 
@@ -345,6 +498,11 @@
     }
   });
 
+  if (!String(input.value || "").trim()) {
+    input.value = "/welcome";
+  }
   input.focus();
+  // Select all so user can overwrite; auto-run welcome on first paint.
+  input.select();
   refresh();
 })();

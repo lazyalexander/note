@@ -45,3 +45,7 @@ article.post h1{margin-bottom:.35rem}
 .suggest-tags{display:flex;flex-wrap:wrap;gap:.3rem;flex-shrink:0}
 .suggest-tag{color:var(--amber);font-size:.8em}
 .suggest-item.active .suggest-tag{color:var(--green)}
+
+article.post pre{line-height:1.1;font-size:clamp(7px,1.6vw,12px);color:var(--amber)}
+article.post a{color:var(--green);text-decoration:underline}
+article.post a:hover{color:var(--amber)}

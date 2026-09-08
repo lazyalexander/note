@@ -159,7 +159,7 @@ async function main() {
 <div class="term">
   <div class="term-line">
     <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
-    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/help" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/welcome" value="/welcome" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
   </div>
   <ul class="suggest" id="suggest" role="listbox" hidden></ul>
   <pre class="term-echo" id="term-echo" hidden></pre>
@@ -171,7 +171,7 @@ async function main() {
 </div></div>`;
 
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script src="assets/terminal.js?v=3"></script>`;
+<script src="assets/terminal.js?v=4"></script>`;
 
   await writeFile(
     join(distDir, "index.html"),

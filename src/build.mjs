@@ -36,10 +36,11 @@ function href(path) {
   return baseHref + path.replace(/^\//, "");
 }
 
-function layout({ title, body, back }) {
+function layout({ title, body, back, scripts }) {
   const backLink = back
     ? `<a class="back" href="${href("")}">&lt;-- back</a>`
     : "";
+  const scriptTags = scripts || "";
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -55,6 +56,7 @@ ${backLink}
 ${body}
 <p class="footer">note // static tui blog</p>
 </div>
+${scriptTags}
 </body>
 </html>
 `;
@@ -64,6 +66,7 @@ async function main() {
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
+  await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
 
   const files = (await readdir(postsDir)).filter((f) => f.endsWith(".md")).sort();
   const posts = [];
@@ -86,14 +89,53 @@ async function main() {
     await writeFile(join(distDir, "posts", post.outName), page);
   }
 
-  const items = posts.map((p, i) => {
-    const n = String(i + 1).padStart(2, "0");
-    return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a></li>`;
-  }).join("\n");
+  const postsIndex = posts.map((p) => ({
+    title: p.title,
+    stem: p.stem,
+    href: `posts/${p.outName}`,
+  }));
 
-  const indexBody = `<div class="box"><div class="box-title">~/note</div><div class="box-body"><div class="prompt">guest@pages:<span class="cwd">~/note</span>$ ls posts/</div><ul class="menu">${items}</ul><p class="hint">select a post // drop .md into posts/ then push</p></div></div>`;
-  await writeFile(join(distDir, "index.html"), layout({ title: "note", body: indexBody, back: false }));
+  await writeFile(
+    join(distDir, "posts.json"),
+    JSON.stringify({ base: BASE, posts: postsIndex }, null, 2) + "\n"
+  );
+
+  const items = posts
+    .map((p, i) => {
+      const n = String(i + 1).padStart(2, "0");
+      return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a></li>`;
+    })
+    .join("\n");
+
+  const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
+
+  const indexBody = `<div class="box"><div class="box-title">~/note</div><div class="box-body">
+<div class="term">
+  <div class="term-line">
+    <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
+    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/goto &lt;title&gt;" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+  </div>
+  <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+  <pre class="term-echo" id="term-echo" hidden></pre>
+</div>
+<p class="hint">commands: /goto &lt;title&gt; · ↑↓ / Tab cycle · Enter open · Esc clear</p>
+<div class="ls-block">
+  <div class="prompt">guest@note:<span class="cwd">~/note</span>$ ls posts/</div>
+  <ul class="menu">${items}</ul>
+</div>
+</div></div>`;
+
+  const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
+<script src="assets/terminal.js"></script>`;
+
+  await writeFile(
+    join(distDir, "index.html"),
+    layout({ title: "note", body: indexBody, back: false, scripts })
+  );
   console.log(`Built ${posts.length} posts -> dist/ (BASE_PATH=${BASE || "(root)"})`);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

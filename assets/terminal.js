@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=10";
+import { createTermEngine } from "./term-engine.js?v=11";
 
 (function () {
   "use strict";

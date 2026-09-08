@@ -115,6 +115,8 @@ async function main() {
   await cp(join(root, "src", "term-engine.mjs"), join(distDir, "assets", "term-engine.js"));
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
   await cp(join(root, "src", "term-engine.mjs"), join(root, "assets", "term-engine.js"));
+  await mkdir(join(distDir, "assets", "bad-apple"), { recursive: true });
+  await cp(join(root, "assets", "bad-apple"), join(distDir, "assets", "bad-apple"), { recursive: true });
 
   const files = (await readdir(postsDir)).filter((f) => f.endsWith(".md")).sort();
   const posts = [];
@@ -147,21 +149,21 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=10"></script>`;
+<script type="module" src="assets/terminal.js?v=11"></script>`;
 
   const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
-  const eggBody = `<div class="box egg-box"><div class="box-title">~/lost</div><div class="box-body">
-<p class="egg-msg">no such file — playing radio instead</p>
-<p class="egg-msg">embed may ask you to sign in; open on YouTube instead: <a href="https://www.youtube.com/watch?v=bIiIrXM7BUA&list=RDbIiIrXM7BUA&start_radio=1" target="_blank" rel="noopener noreferrer">watch on YouTube</a></p>
-<div class="egg-video">
-<iframe
-  src="https://www.youtube-nocookie.com/embed/bIiIrXM7BUA?list=RDbIiIrXM7BUA&rel=0"
-  title="YouTube video"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-  allowfullscreen
-  loading="lazy"
-  referrerpolicy="strict-origin-when-cross-origin"></iframe>
-</div>
+  const eggScripts = `${scripts}
+<script src="assets/bad-apple/lz-string.min.js"></script>
+<script src="assets/bad-apple/player.js?v=1"></script>`;
+  const eggBody = `<div class="box egg-box"><div class="box-title">~/lost · bad apple</div><div class="box-body">
+<p class="egg-msg">no such file — ascii radio instead</p>
+<p id="ba-status">…</p>
+<button type="button" id="play-button">Play</button>
+<div class="ba-wrap"><pre id="ascii-display"></pre></div>
+<audio id="audio-player" preload="auto">
+  <source src="assets/bad-apple/bad_apple.mp3" type="audio/mpeg">
+</audio>
+<p class="ba-credit">ASCII player adapted from <a href="https://github.com/EmirXK/bad_apple" target="_blank" rel="noopener noreferrer">EmirXK/bad_apple</a> (MIT). Animation: Bad Apple!! feat. nomico.</p>
 </div></div>
 <div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.js</div><div class="box-body">
 <p class="egg-msg">source · <a href="assets/term-engine.js">raw file</a></p>
@@ -169,7 +171,7 @@ async function main() {
 </div></div>`;
   await writeFile(
     join(distDir, "egg.html"),
-    layout({ title: "???", body: eggBody, back: true, scripts })
+    layout({ title: "???", body: eggBody, back: true, scripts: eggScripts })
   );
 
   for (const post of posts) {

@@ -1,0 +1,4 @@
+Bad Apple ASCII player adapted from:
+https://github.com/EmirXK/bad_apple
+Copyright 2024 Emir — MIT License
+Animation: Bad Apple!! feat. nomico (Alstroemeria Records)

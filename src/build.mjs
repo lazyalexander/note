@@ -147,7 +147,7 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=8"></script>`;
+<script type="module" src="assets/terminal.js?v=9"></script>`;
 
   const eggBody = `<div class="box egg-box"><div class="box-title">~/lost</div><div class="box-body">
 <p class="egg-msg">no such file — playing radio instead</p>

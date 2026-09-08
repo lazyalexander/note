@@ -106,3 +106,19 @@ test("goto miss opens egg page", () => {
   assert.equal(r.egg, true);
   assert.equal(r.post.href, "egg.html");
 });
+
+test("tag prefix match not mid-string", () => {
+  const r = filterPostsByTag(posts, "eta");
+  assert.equal(r.error, null);
+  assert.equal(r.posts.length, 0);
+  const m = filterPostsByTag(posts, "met");
+  assert.ok(m.posts.length >= 1);
+  assert.ok(m.posts.every((p) => p.tags.some((t) => t === "meta" || t.startsWith("met"))));
+});
+
+test("tag softens trailing operators while typing", () => {
+  const r = filterPostsByTag(posts, "meta&");
+  assert.equal(r.error, null);
+  assert.ok(r.posts.length >= 1);
+  assert.ok(r.posts.every((p) => p.tags.includes("meta")));
+});

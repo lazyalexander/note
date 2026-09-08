@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=11";
+import { createTermEngine } from "./term-engine.js?v=12";
 
 (function () {
   "use strict";
@@ -12,6 +12,7 @@ import { createTermEngine } from "./term-engine.js?v=11";
   const engine = createTermEngine({ posts });
   let matches = [];
   let selected = 0;
+  let composing = false;
 
   function escapeHtml(s) {
     return String(s)
@@ -121,7 +122,7 @@ import { createTermEngine } from "./term-engine.js?v=11";
   }
 
   function refresh() {
-    if (input.isComposing) return;
+    if (composing) return;
     const result = engine.suggest(input.value);
     if (result.error) setEcho(result.error, true);
     else setEcho("");
@@ -136,6 +137,13 @@ import { createTermEngine } from "./term-engine.js?v=11";
     highlightOnly();
   }
 
+  function isImeBusy(e) {
+    if (composing) return true;
+    if (e && e.isComposing) return true;
+    if (e && e.keyCode === 229) return true;
+    return false;
+  }
+
   function reviveAfterHistory() {
     engine.resetNavigation();
   }
@@ -144,10 +152,24 @@ import { createTermEngine } from "./term-engine.js?v=11";
     if (document.visibilityState === "visible") reviveAfterHistory();
   });
 
-  input.addEventListener("input", refresh);
-  input.addEventListener("compositionend", refresh);
+  input.addEventListener("compositionstart", function () {
+    composing = true;
+  });
+  input.addEventListener("compositionend", function () {
+    setTimeout(function () {
+      composing = false;
+      refresh();
+    }, 0);
+  });
+
+  input.addEventListener("input", function (e) {
+    if (composing || (e && e.isComposing)) return;
+    refresh();
+  });
 
   input.addEventListener("keydown", function (e) {
+    if (isImeBusy(e)) return;
+
     if (e.key === "ArrowDown") {
       if (matches.length) {
         e.preventDefault();
@@ -183,6 +205,7 @@ import { createTermEngine } from "./term-engine.js?v=11";
 
   document.addEventListener("keydown", function (e) {
     if (e.target === input) return;
+    if (composing) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key.length === 1 || e.key === "Backspace") input.focus();
   });

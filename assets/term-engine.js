@@ -35,15 +35,19 @@ export function postTags(p) {
 }
 
 export function postHasTag(p, atom) {
-  const want = normalizeTag(atom);
-  if (!want) return false;
-  return postTags(p).some((t) => normalizeTag(t) === want);
+  return postMatchesAtom(p, atom);
 }
 
-export function postHasTagFuzzy(p, atom) {
-  const want = normalizeTag(atom);
-  if (!want) return false;
-  return postTags(p).some((t) => normalizeTag(t).indexOf(want) !== -1);
+/** Exact or prefix match — autocomplete-friendly, avoids mid-string false hits. */
+export function tagAtomMatches(postTag, atom) {
+  const a = normalizeTag(atom);
+  const t = normalizeTag(postTag);
+  if (!a || !t) return false;
+  return t === a || t.startsWith(a);
+}
+
+export function postMatchesAtom(p, atom) {
+  return postTags(p).some((t) => tagAtomMatches(t, atom));
 }
 
 export function tokenizeTagExpr(src) {
@@ -70,7 +74,8 @@ export function tokenizeTagExpr(src) {
       i += 2;
       continue;
     }
-    const m = s.slice(i).match(/^@?[\w\-\u4e00-\u9fff]+/);
+    // letters, digits, _, -, CJK; optional leading @
+    const m = s.slice(i).match(/^@?[A-Za-z0-9_\-\u4e00-\u9fff]+/);
     if (m) {
       tokens.push({ type: "tag", value: m[0] });
       i += m[0].length;
@@ -130,22 +135,68 @@ export function parseTagExpr(src) {
   return tree;
 }
 
-export function evalTagNode(node, p, fuzzy) {
+export function evalTagNode(node, p) {
   if (!node) return false;
-  if (node.type === "tag") {
-    return fuzzy ? postHasTagFuzzy(p, node.value) : postHasTag(p, node.value);
-  }
-  if (node.type === "&") {
-    return evalTagNode(node.left, p, fuzzy) && evalTagNode(node.right, p, fuzzy);
-  }
-  if (node.type === "||") {
-    return evalTagNode(node.left, p, fuzzy) || evalTagNode(node.right, p, fuzzy);
-  }
+  if (node.type === "tag") return postMatchesAtom(p, node.value);
+  if (node.type === "&") return evalTagNode(node.left, p) && evalTagNode(node.right, p);
+  if (node.type === "||") return evalTagNode(node.left, p) || evalTagNode(node.right, p);
   return false;
 }
 
-export function exprHasOps(node) {
-  return !!(node && node.type !== "tag");
+/**
+ * While typing, strip trailing incomplete ops so `/tag meta&` still filters.
+ */
+export function softenTagQuery(q) {
+  let s = String(q || "").trim();
+  s = s.replace(/(\s*(&|\|\||\()\s*)+$/g, "").trim();
+  return s;
+}
+
+export function filterPostsByTag(posts, query, maxLen = TAG_EXPR_MAX) {
+  const list = Array.isArray(posts) ? posts : [];
+  const raw = String(query || "").trim();
+  if (!raw) {
+    return {
+      posts: list.filter((p) => postTags(p).length > 0),
+      error: null,
+    };
+  }
+  if (raw.length > maxLen) {
+    return { posts: [], error: `tag expr max ${maxLen} chars` };
+  }
+
+  function tryFilter(expr) {
+    const tree = parseTagExpr(expr);
+    return list.filter((p) => evalTagNode(tree, p));
+  }
+
+  try {
+    return { posts: tryFilter(raw), error: null };
+  } catch (err) {
+    const soft = softenTagQuery(raw);
+    if (soft && soft !== raw) {
+      try {
+        return { posts: tryFilter(soft), error: null };
+      } catch (_) {
+        /* fall through */
+      }
+    }
+    // last complete tag token as prefix hint (still typing)
+    const tokens = [...raw.matchAll(/@?[A-Za-z0-9_\-\u4e00-\u9fff]+/g)].map(
+      (m) => m[0]
+    );
+    if (tokens.length) {
+      const last = tokens[tokens.length - 1];
+      return {
+        posts: list.filter((p) => postMatchesAtom(p, last)),
+        error: null,
+      };
+    }
+    return {
+      posts: [],
+      error: "tag parse: " + (err && err.message ? err.message : "error"),
+    };
+  }
 }
 
 export function filterPostsByTitle(posts, query) {
@@ -157,33 +208,6 @@ export function filterPostsByTitle(posts, query) {
       String(p.title).toLowerCase().includes(q) ||
       String(p.stem).toLowerCase().includes(q)
   );
-}
-
-export function filterPostsByTag(posts, query, maxLen = TAG_EXPR_MAX) {
-  const list = Array.isArray(posts) ? posts : [];
-  const q = String(query || "").trim();
-  if (!q) {
-    return {
-      posts: list.filter((p) => postTags(p).length > 0),
-      error: null,
-    };
-  }
-  if (q.length > maxLen) {
-    return { posts: [], error: `tag expr max ${maxLen} chars` };
-  }
-  try {
-    const tree = parseTagExpr(q);
-    const fuzzy = !exprHasOps(tree);
-    return {
-      posts: list.filter((p) => evalTagNode(tree, p, fuzzy)),
-      error: null,
-    };
-  } catch (err) {
-    return {
-      posts: [],
-      error: "tag parse: " + (err && err.message ? err.message : "error"),
-    };
-  }
 }
 
 export function findPostByStem(posts, stem) {

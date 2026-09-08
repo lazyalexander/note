@@ -4,9 +4,11 @@
   "private": true,
   "description": "Minimal TUI-style static blog for GitHub Pages",
   "scripts": {
-    "build": "node src/build.mjs"
+    "build": "node src/build.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "marked": "^15.0.0"
-  }
+  },
+  "type": "module"
 }

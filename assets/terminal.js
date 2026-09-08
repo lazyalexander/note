@@ -1,3 +1,7 @@
+import {
+  createTermEngine,
+} from "./term-engine.js";
+
 (function () {
   "use strict";
 
@@ -7,186 +11,9 @@
   const echo = document.getElementById("term-echo");
   if (!input || !suggest) return;
 
-  const TAG_EXPR_MAX = 64;
+  const engine = createTermEngine({ posts });
   let matches = [];
   let selected = 0;
-  let navigating = false;
-
-  function parseLine(raw) {
-    const line = String(raw || "").trim();
-    if (/^\/?help$/i.test(line)) return { kind: "help" };
-    if (/^\/?welcome$/i.test(line)) return { kind: "welcome" };
-    let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
-    if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
-    m = line.match(/^\/?tag(?:\s+(.*))?$/i);
-    if (m) return { kind: "tag", query: m[1] == null ? null : m[1] };
-    return { kind: "other", text: line };
-  }
-
-  function filterPostsByTitle(query) {
-    const q = String(query || "").trim().toLowerCase();
-    if (!q) return posts.slice();
-    return posts.filter(function (p) {
-      return (
-        String(p.title).toLowerCase().indexOf(q) !== -1 ||
-        String(p.stem).toLowerCase().indexOf(q) !== -1
-      );
-    });
-  }
-
-  function postTags(p) {
-    return Array.isArray(p.tags) ? p.tags : [];
-  }
-
-  function normalizeTag(t) {
-    return String(t || "")
-      .trim()
-      .toLowerCase()
-      .replace(/^@/, "");
-  }
-
-  function postHasTag(p, atom) {
-    const want = normalizeTag(atom);
-    if (!want) return false;
-    return postTags(p).some(function (t) {
-      return normalizeTag(t) === want;
-    });
-  }
-
-  function postHasTagFuzzy(p, atom) {
-    const want = normalizeTag(atom);
-    if (!want) return false;
-    return postTags(p).some(function (t) {
-      return normalizeTag(t).indexOf(want) !== -1;
-    });
-  }
-
-  function tokenizeTagExpr(src) {
-    const s = String(src || "");
-    const tokens = [];
-    let i = 0;
-    while (i < s.length) {
-      if (/\s/.test(s[i])) {
-        i++;
-        continue;
-      }
-      if (s[i] === "(" || s[i] === ")") {
-        tokens.push({ type: s[i] });
-        i++;
-        continue;
-      }
-      if (s[i] === "&") {
-        tokens.push({ type: "&" });
-        i++;
-        continue;
-      }
-      if (s[i] === "|" && s[i + 1] === "|") {
-        tokens.push({ type: "||" });
-        i += 2;
-        continue;
-      }
-      const m = s.slice(i).match(/^@?[\w\-\u4e00-\u9fff]+/);
-      if (m) {
-        tokens.push({ type: "tag", value: m[0] });
-        i += m[0].length;
-        continue;
-      }
-      throw new Error("bad token near: " + s.slice(i, i + 8));
-    }
-    return tokens;
-  }
-
-  function parseTagExpr(src) {
-    const tokens = tokenizeTagExpr(src);
-    let pos = 0;
-
-    function peek() {
-      return tokens[pos] || null;
-    }
-    function take(type) {
-      const t = peek();
-      if (!t || (type && t.type !== type)) return null;
-      pos++;
-      return t;
-    }
-
-    function parsePrimary() {
-      if (take("(")) {
-        const node = parseOr();
-        if (!take(")")) throw new Error("missing )");
-        return node;
-      }
-      const t = take("tag");
-      if (!t) throw new Error("expected tag");
-      return { type: "tag", value: t.value };
-    }
-
-    function parseAnd() {
-      let node = parsePrimary();
-      while (peek() && peek().type === "&") {
-        take("&");
-        node = { type: "&", left: node, right: parsePrimary() };
-      }
-      return node;
-    }
-
-    function parseOr() {
-      let node = parseAnd();
-      while (peek() && peek().type === "||") {
-        take("||");
-        node = { type: "||", left: node, right: parseAnd() };
-      }
-      return node;
-    }
-
-    if (!tokens.length) throw new Error("empty");
-    const tree = parseOr();
-    if (pos !== tokens.length) throw new Error("trailing input");
-    return tree;
-  }
-
-  function evalTagNode(node, p, fuzzy) {
-    if (!node) return false;
-    if (node.type === "tag") {
-      return fuzzy ? postHasTagFuzzy(p, node.value) : postHasTag(p, node.value);
-    }
-    if (node.type === "&") {
-      return evalTagNode(node.left, p, fuzzy) && evalTagNode(node.right, p, fuzzy);
-    }
-    if (node.type === "||") {
-      return evalTagNode(node.left, p, fuzzy) || evalTagNode(node.right, p, fuzzy);
-    }
-    return false;
-  }
-
-  function exprHasOps(node) {
-    if (!node) return false;
-    if (node.type === "tag") return false;
-    return true;
-  }
-
-  function filterPostsByTag(query) {
-    const q = String(query || "").trim();
-    if (!q) {
-      return posts.filter(function (p) {
-        return postTags(p).length > 0;
-      });
-    }
-    if (q.length > TAG_EXPR_MAX) {
-      setEcho("tag expr max " + TAG_EXPR_MAX + " chars", true);
-      return [];
-    }
-    try {
-      const tree = parseTagExpr(q);
-      const fuzzy = !exprHasOps(tree);
-      return posts.filter(function (p) {
-        return evalTagNode(tree, p, fuzzy);
-      });
-    } catch (err) {
-      setEcho("tag parse: " + (err && err.message ? err.message : "error"), true);
-      return [];
-    }
-  }
 
   function escapeHtml(s) {
     return String(s)
@@ -197,13 +24,20 @@
   }
 
   function formatTags(p) {
-    const tags = postTags(p);
+    const tags = Array.isArray(p.tags) ? p.tags : [];
     if (!tags.length) return "";
     return tags
       .map(function (t) {
         return '<span class="suggest-tag">@' + escapeHtml(t) + "</span>";
       })
       .join(" ");
+  }
+
+  function setEcho(msg, isErr) {
+    if (!echo) return;
+    echo.textContent = msg || "";
+    echo.classList.toggle("err", !!isErr);
+    echo.hidden = !msg;
   }
 
   function renderSuggest() {
@@ -238,7 +72,7 @@
       li.addEventListener("mousedown", function (e) {
         e.preventDefault();
         selected = i;
-        goTo(matches[selected]);
+        navigate(matches[selected]);
       });
       suggest.appendChild(li);
     });
@@ -255,127 +89,57 @@
     });
   }
 
-  function setEcho(msg, isErr) {
-    if (!echo) return;
-    echo.textContent = msg || "";
-    echo.classList.toggle("err", !!isErr);
-    echo.hidden = !msg;
-  }
-
-  function goTo(post) {
-    if (!post || !post.href || navigating) return;
-    navigating = true;
+  function navigate(post) {
+    if (!post || !post.href) return;
+    if (!engine.beginNavigate()) return;
     var a = document.createElement("a");
     a.href = post.href;
     window.location.assign(a.href);
   }
 
-  function findPostByStem(stem) {
-    var want = String(stem || "").toLowerCase();
-    var hit = posts.filter(function (p) {
-      return String(p.stem).toLowerCase() === want;
-    });
-    if (hit.length) return hit[0];
-    hit = posts.filter(function (p) {
-      return String(p.stem).toLowerCase().indexOf(want) !== -1;
-    });
-    return hit[0] || null;
-  }
-
-  function findHelpPost() {
-    return (
-      findPostByStem("00-help") ||
-      posts.filter(function (p) {
-        return postTags(p).some(function (t) {
-          return normalizeTag(t) === "help";
-        });
-      })[0] ||
-      null
-    );
-  }
-
-  function findWelcomePost() {
-    return (
-      findPostByStem("01-welcome") ||
-      posts.filter(function (p) {
-        return postTags(p).some(function (t) {
-          return normalizeTag(t) === "welcome";
-        });
-      })[0] ||
-      null
-    );
-  }
-
-  function openHelp() {
-    var post = findHelpPost();
-    if (!post) {
-      setEcho("help post not found", true);
-      return false;
+  function applyAction(action) {
+    if (!action) return;
+    if (action.type === "navigate") {
+      navigate(action.post);
+      return;
     }
-    goTo(post);
-    return true;
-  }
-
-  function openWelcome() {
-    var post = findWelcomePost();
-    if (!post) {
-      setEcho("welcome post not found", true);
-      return false;
+    if (action.type === "echo") {
+      setEcho(action.message, !!action.err);
+      return;
     }
-    goTo(post);
-    return true;
-  }
-
-  function tryAutoCommand() {
-    if (navigating) return true;
-    if (input.composing || input.isComposing) return false;
-    var parsed = parseLine(input.value);
-    if (parsed.kind === "help") {
-      matches = [];
-      selected = 0;
-      renderSuggest();
-      openHelp();
-      return true;
-    }
-    if (parsed.kind === "welcome") {
-      matches = [];
-      selected = 0;
-      renderSuggest();
-      openWelcome();
-      return true;
-    }
-    return false;
-  }
-
-  function refresh() {
-    if (tryAutoCommand()) return;
-
-    const parsed = parseLine(input.value);
-    setEcho("");
-
-    if (parsed.kind === "goto") {
-      if (parsed.query === null) {
-        matches = [];
-        selected = 0;
-        renderSuggest();
-        return;
-      }
-      matches = filterPostsByTitle(parsed.query);
-    } else if (parsed.kind === "tag") {
-      if (parsed.query === null) {
-        matches = [];
-        selected = 0;
-        renderSuggest();
-        return;
-      }
-      matches = filterPostsByTag(parsed.query);
-    } else {
+    if (action.type === "clear") {
+      input.value = "";
+      setEcho("");
       matches = [];
       selected = 0;
       renderSuggest();
       return;
     }
+    if (action.type === "suggest") {
+      matches = action.matches || [];
+      selected = 0;
+      renderSuggest();
+    }
+  }
 
+  function refresh() {
+    if (input.isComposing) return;
+    const line = input.value;
+    const parsedKind = engine.parseLine(line).kind;
+
+    // Auto-run exact /help or /welcome when fully typed.
+    if (parsedKind === "help" || parsedKind === "welcome") {
+      matches = [];
+      selected = 0;
+      renderSuggest();
+      applyAction(engine.submit(line, selected));
+      return;
+    }
+
+    const result = engine.suggest(line);
+    if (result.error) setEcho(result.error, true);
+    else setEcho("");
+    matches = result.matches || [];
     if (selected >= matches.length) selected = Math.max(0, matches.length - 1);
     renderSuggest();
   }
@@ -386,35 +150,27 @@
     highlightOnly();
   }
 
-  function openFromMatches(parsed) {
-    if (matches.length === 0) {
-      setEcho("no match: " + (parsed.query || ""), true);
-      return;
-    }
-    if (parsed.kind === "goto") {
-      const q = parsed.query.trim().toLowerCase();
-      const exact = matches.filter(function (p) {
-        return p.title.toLowerCase() === q || p.stem.toLowerCase() === q;
-      });
-      if (exact.length === 1) {
-        goTo(exact[0]);
-        return;
-      }
-    }
-    goTo(matches[selected] || matches[0]);
+  // Critical: browser Back often restores this page from bfcache with JS
+  // state intact. beginNavigate() left navigating=true, so the shell looked dead.
+  function reviveAfterHistory() {
+    engine.resetNavigation();
   }
+  window.addEventListener("pageshow", reviveAfterHistory);
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted) reviveAfterHistory();
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") reviveAfterHistory();
+  });
 
   input.addEventListener("input", refresh);
   input.addEventListener("keyup", function () {
-    tryAutoCommand();
+    const k = engine.parseLine(input.value).kind;
+    if (k === "help" || k === "welcome") refresh();
   });
-  input.addEventListener("compositionend", function () {
-    refresh();
-  });
+  input.addEventListener("compositionend", refresh);
 
   input.addEventListener("keydown", function (e) {
-    const parsed = parseLine(input.value);
-
     if (e.key === "ArrowDown") {
       if (matches.length) {
         e.preventDefault();
@@ -444,60 +200,18 @@
       return;
     }
     if (e.key !== "Enter") return;
-
     e.preventDefault();
-    const raw = input.value.trim();
-    if (!raw) return;
-
-    if (parsed.kind === "help") {
-      openHelp();
-      return;
-    }
-    if (parsed.kind === "welcome") {
-      openWelcome();
-      return;
-    }
-
-    if (parsed.kind === "goto") {
-      if (parsed.query === null) {
-        matches = [];
-        renderSuggest();
-        return;
-      }
-      openFromMatches(parsed);
-      return;
-    }
-
-    if (parsed.kind === "tag") {
-      if (parsed.query === null) {
-        matches = filterPostsByTag("");
-        selected = 0;
-        renderSuggest();
-        return;
-      }
-      openFromMatches(parsed);
-      return;
-    }
-
-    if (/^clear$/i.test(raw)) {
-      input.value = "";
-      setEcho("");
-      matches = [];
-      renderSuggest();
-      return;
-    }
-
-    setEcho("command not found: " + raw, true);
+    applyAction(engine.submit(input.value, selected));
   });
 
   document.addEventListener("keydown", function (e) {
     if (e.target === input) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key.length === 1 || e.key === "Backspace") {
-      input.focus();
-    }
+    if (e.key.length === 1 || e.key === "Backspace") input.focus();
   });
 
+  // Ensure a stale lock never survives a soft restore.
+  reviveAfterHistory();
   input.focus();
   refresh();
 })();

@@ -101,7 +101,9 @@ async function main() {
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
+  await cp(join(root, "src", "term-engine.mjs"), join(distDir, "assets", "term-engine.js"));
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
+  await cp(join(root, "src", "term-engine.mjs"), join(root, "assets", "term-engine.js"));
 
   const files = (await readdir(postsDir)).filter((f) => f.endsWith(".md")).sort();
   const posts = [];
@@ -171,7 +173,7 @@ async function main() {
 </div></div>`;
 
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script src="assets/terminal.js?v=5"></script>`;
+<script type="module" src="assets/terminal.js?v=6"></script>`;
 
   await writeFile(
     join(distDir, "index.html"),

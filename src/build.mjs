@@ -11,6 +11,9 @@ const rawBase = process.env.BASE_PATH ?? "/note";
 const BASE = rawBase === "/" ? "" : rawBase.replace(/\/$/, "");
 const baseHref = BASE ? BASE + "/" : "/";
 
+const TAG_TOKEN = "@[\\w\\-\\u4e00-\\u9fff]+";
+const TAG_LINE_RE = new RegExp(`^(${TAG_TOKEN})(\\s+${TAG_TOKEN})*$`);
+
 function escapeHtml(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -30,6 +33,38 @@ function sortKey(stem, title) {
 function extractTitle(md, stem) {
   const m = md.match(/^#\s+(.+)$/m);
   return m ? m[1].trim() : stem;
+}
+
+/** Tags sit on the first non-empty line after H1; optional blank line allowed. */
+function extractTags(md) {
+  const lines = md.split(/\r?\n/);
+  let h1Index = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^#\s+/.test(lines[i])) {
+      h1Index = i;
+      break;
+    }
+  }
+  if (h1Index === -1) return { tags: [], mdWithoutTags: md };
+
+  let tagLineIndex = -1;
+  for (let i = h1Index + 1; i < lines.length; i++) {
+    if (lines[i].trim() === "") continue;
+    tagLineIndex = i;
+    break;
+  }
+
+  if (tagLineIndex === -1) return { tags: [], mdWithoutTags: md };
+
+  const trimmed = lines[tagLineIndex].trim();
+  if (!TAG_LINE_RE.test(trimmed)) return { tags: [], mdWithoutTags: md };
+
+  const tags = [...trimmed.matchAll(new RegExp(TAG_TOKEN, "g"))].map((m) =>
+    m[0].slice(1)
+  );
+  const next = lines.slice();
+  next.splice(tagLineIndex, 1);
+  return { tags, mdWithoutTags: next.join("\n") };
 }
 
 function href(path) {
@@ -75,10 +110,17 @@ async function main() {
     const stem = file.replace(/\.md$/, "");
     const md = await readFile(join(postsDir, file), "utf8");
     const title = extractTitle(md, stem);
+    const { tags, mdWithoutTags } = extractTags(md);
     const key = sortKey(stem, title);
-    const htmlBody = marked.parse(md);
+    let htmlBody = marked.parse(mdWithoutTags);
+    if (tags.length) {
+      const tagsHtml = `<p class="tags">${tags
+        .map((t) => `<span class="tag">@${escapeHtml(t)}</span>`)
+        .join(" ")}</p>`;
+      htmlBody = htmlBody.replace(/<\/h1>/i, `</h1>\n${tagsHtml}`);
+    }
     const outName = stem + ".html";
-    posts.push({ stem, title, key, outName, htmlBody });
+    posts.push({ stem, title, key, outName, htmlBody, tags });
   }
 
   posts.sort((a, b) => a.key - b.key || a.stem.localeCompare(b.stem));
@@ -93,6 +135,7 @@ async function main() {
     title: p.title,
     stem: p.stem,
     href: `posts/${p.outName}`,
+    tags: p.tags,
   }));
 
   await writeFile(
@@ -103,7 +146,10 @@ async function main() {
   const items = posts
     .map((p, i) => {
       const n = String(i + 1).padStart(2, "0");
-      return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a></li>`;
+      const tagBits = p.tags.length
+        ? ` <span class="menu-tags">${p.tags.map((t) => "@" + escapeHtml(t)).join(" ")}</span>`
+        : "";
+      return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a>${tagBits}</li>`;
     })
     .join("\n");
 
@@ -113,12 +159,12 @@ async function main() {
 <div class="term">
   <div class="term-line">
     <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
-    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/goto &lt;title&gt;" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/goto · /tag" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
   </div>
   <ul class="suggest" id="suggest" role="listbox" hidden></ul>
   <pre class="term-echo" id="term-echo" hidden></pre>
 </div>
-<p class="hint">commands: /goto &lt;title&gt; · ↑↓ / Tab cycle · Enter open · Esc clear</p>
+<p class="hint">commands: /goto &lt;title&gt; · /tag &lt;tag&gt; · ↑↓ / Tab cycle · Enter open · Esc clear</p>
 <div class="ls-block">
   <div class="prompt">guest@note:<span class="cwd">~/note</span>$ ls posts/</div>
   <ul class="menu">${items}</ul>

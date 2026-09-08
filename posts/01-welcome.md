@@ -1,17 +1,20 @@
 # 欢迎 / Welcome
 
-这是一个极简的 **TUI 风格** 静态博客。
+@intro @meta
 
-把 Markdown 文件丢进 `posts/`，推送到 GitHub，Actions 会自动构建并发布到 Pages。
+这是一个极简的 **TUI** blog.
 
-## 特性
+Push md to posts/.
 
-- 深色终端配色（绿 / 琥珀）
-- 按文件名前缀数字排序
-- 零服务器：纯静态 HTML
+## Features
+
+- dark TUI
+- numeric sort
+- static HTML
+- tags + /tag intro
 
 ```bash
 npm run build
 ```
 
-试试下一篇：`02-how-to-write.md`。
+See 02-how-to-write.md.

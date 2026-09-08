@@ -1,5 +1,7 @@
 # TUI Notes
 
+@tui @design
+
 A tiny static blog with terminal vibes.
 
 ## Why
@@ -8,4 +10,4 @@ A tiny static blog with terminal vibes.
 - Green and amber CRT feel
 - No framework needed
 
-写给喜欢终端的人。
+For people who like terminals.

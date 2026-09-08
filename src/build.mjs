@@ -147,7 +147,24 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=7"></script>`;
+<script type="module" src="assets/terminal.js?v=8"></script>`;
+
+  const eggBody = `<div class="box egg-box"><div class="box-title">~/lost</div><div class="box-body">
+<p class="egg-msg">no such file — playing radio instead</p>
+<div class="egg-video">
+<iframe
+  src="https://www.youtube.com/embed/bIiIrXM7BUA?list=RDbIiIrXM7BUA&autoplay=1&rel=0"
+  title="YouTube video"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  allowfullscreen
+  loading="lazy"
+  referrerpolicy="strict-origin-when-cross-origin"></iframe>
+</div>
+</div></div>`;
+  await writeFile(
+    join(distDir, "egg.html"),
+    layout({ title: "???", body: eggBody, back: true, scripts })
+  );
 
   for (const post of posts) {
     const body = `<div class="box"><div class="box-title">post/${escapeHtml(post.stem)}.md</div><div class="box-body"><article class="post">${post.htmlBody}</article></div></div>`;

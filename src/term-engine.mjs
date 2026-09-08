@@ -2,6 +2,15 @@
 
 export const TAG_EXPR_MAX = 64;
 
+/** Hidden page for /goto with no matches. */
+export const EGG_HREF = "egg.html";
+export const EGG_POST = {
+  title: "???",
+  stem: "egg",
+  href: EGG_HREF,
+  tags: [],
+};
+
 export function normalizeTag(t) {
   return String(t || "")
     .trim()
@@ -267,8 +276,7 @@ export function createTermEngine(options = {}) {
     if (parsed.kind === "goto") {
       if (parsed.query === null) return { type: "noop" };
       const post = pickGoto(matches, parsed.query, selectedIndex);
-      if (!post)
-        return { type: "echo", message: "no match: " + parsed.query, err: true };
+      if (!post) return { type: "navigate", post: EGG_POST, egg: true };
       return { type: "navigate", post };
     }
     if (parsed.kind === "tag") {

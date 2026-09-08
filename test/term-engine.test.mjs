@@ -98,3 +98,11 @@ test("pageshow restore scenario", () => {
   assert.equal(again.type, "navigate");
   assert.ok(eng.beginNavigate());
 });
+
+test("goto miss opens egg page", () => {
+  const eng = createTermEngine({ posts });
+  const r = eng.submit("/goto definitely-not-a-post-xyz");
+  assert.equal(r.type, "navigate");
+  assert.equal(r.egg, true);
+  assert.equal(r.post.href, "egg.html");
+});

@@ -1,0 +1,12 @@
+{
+  "name": "note",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal TUI-style static blog for GitHub Pages",
+  "scripts": {
+    "build": "node src/build.mjs"
+  },
+  "dependencies": {
+    "marked": "^15.0.0"
+  }
+}

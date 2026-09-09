@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=15";
+import { createTermEngine } from "./term-engine.js?v=16";
 
 (function () {
   "use strict";
@@ -109,7 +109,7 @@ import { createTermEngine } from "./term-engine.js?v=15";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=15");
+      const mod = await import("./about-search.js?v=16");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });

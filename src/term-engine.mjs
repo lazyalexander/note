@@ -241,8 +241,10 @@ export function createTermEngine(options = {}) {
       };
     }
     if (parsed.kind === "tag") {
-      if (parsed.query === null) return { parsed, matches: [], error: null };
-      const r = filterPostsByTag(posts, parsed.query, tagExprMax);
+      // Bare `/tag` (no args) should still list tagged posts while typing,
+      // same as Enter on `/tag`. Empty query = all posts that have tags.
+      const q = parsed.query == null ? "" : parsed.query;
+      const r = filterPostsByTag(posts, q, tagExprMax);
       return { parsed, matches: r.posts, error: r.error };
     }
     return { parsed, matches: [], error: null };

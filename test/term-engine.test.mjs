@@ -148,3 +148,12 @@ test("submit about returns async search action", () => {
     query: "wine vault revenge",
   });
 });
+
+
+test("bare /tag suggests all tagged posts while typing", () => {
+  const eng = createTermEngine({ posts });
+  const r = eng.suggest("/tag");
+  assert.equal(r.parsed.kind, "tag");
+  assert.ok(r.matches.length >= 3);
+  assert.equal(r.error, null);
+});

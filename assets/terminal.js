@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=12";
+import { createTermEngine } from "./term-engine.js?v=13";
 
 (function () {
   "use strict";
@@ -138,9 +138,9 @@ import { createTermEngine } from "./term-engine.js?v=12";
   }
 
   function isImeBusy(e) {
-    if (composing) return true;
-    if (e && e.isComposing) return true;
-    if (e && e.keyCode === 229) return true;
+    // Enter during IME confirms candidates — never submit.
+    // Do NOT treat keyCode 229 alone as busy (breaks submit on some CJK setups).
+    if (composing || (e && e.isComposing)) return true;
     return false;
   }
 

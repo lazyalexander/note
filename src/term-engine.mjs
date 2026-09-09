@@ -38,7 +38,10 @@ export function postHasTag(p, atom) {
   return postMatchesAtom(p, atom);
 }
 
-/** Exact or prefix match — autocomplete-friendly, avoids mid-string false hits. */
+/**
+ * Dumb stable matcher for small blogs: exact or prefix on normalized tags.
+ * ASCII lowercased; Chinese kept as-is (no case). Mid-string does NOT match.
+ */
 export function tagAtomMatches(postTag, atom) {
   const a = normalizeTag(atom);
   const t = normalizeTag(postTag);
@@ -47,109 +50,110 @@ export function tagAtomMatches(postTag, atom) {
 }
 
 export function postMatchesAtom(p, atom) {
-  return postTags(p).some((t) => tagAtomMatches(t, atom));
+  return postTags(p).some((tg) => tagAtomMatches(tg, atom));
 }
 
-export function tokenizeTagExpr(src) {
-  const s = String(src || "");
-  const tokens = [];
-  let i = 0;
-  while (i < s.length) {
-    if (/\s/.test(s[i])) {
-      i++;
-      continue;
+/** Tag token: optional @, then letters/digits/_/-/CJK (incl. extension A bit). */
+const TAG_ATOM_RE = /@?[\w\u3400-\u9fff\uF900-\uFAFF\-]+/u;
+
+function stripOuterParens(s) {
+  let t = s.trim();
+  while (t.startsWith("(") && t.endsWith(")")) {
+    let depth = 0;
+    let ok = true;
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] === "(") depth++;
+      else if (t[i] === ")") {
+        depth--;
+        if (depth === 0 && i !== t.length - 1) {
+          ok = false;
+          break;
+        }
+      }
     }
-    if (s[i] === "(" || s[i] === ")") {
-      tokens.push({ type: s[i] });
-      i++;
-      continue;
-    }
-    if (s[i] === "&") {
-      tokens.push({ type: "&" });
-      i++;
-      continue;
-    }
-    if (s[i] === "|" && s[i + 1] === "|") {
-      tokens.push({ type: "||" });
-      i += 2;
-      continue;
-    }
-    // letters, digits, _, -, CJK; optional leading @
-    const m = s.slice(i).match(/^@?[A-Za-z0-9_\-\u4e00-\u9fff]+/);
-    if (m) {
-      tokens.push({ type: "tag", value: m[0] });
-      i += m[0].length;
-      continue;
-    }
-    throw new Error("bad token near: " + s.slice(i, i + 8));
+    if (!ok || depth !== 0) break;
+    t = t.slice(1, -1).trim();
   }
-  return tokens;
-}
-
-export function parseTagExpr(src) {
-  const tokens = tokenizeTagExpr(src);
-  let pos = 0;
-
-  function peek() {
-    return tokens[pos] || null;
-  }
-  function take(type) {
-    const t = peek();
-    if (!t || (type && t.type !== type)) return null;
-    pos++;
-    return t;
-  }
-
-  function parsePrimary() {
-    if (take("(")) {
-      const node = parseOr();
-      if (!take(")")) throw new Error("missing )");
-      return node;
-    }
-    const t = take("tag");
-    if (!t) throw new Error("expected tag");
-    return { type: "tag", value: t.value };
-  }
-
-  function parseAnd() {
-    let node = parsePrimary();
-    while (peek() && peek().type === "&") {
-      take("&");
-      node = { type: "&", left: node, right: parsePrimary() };
-    }
-    return node;
-  }
-
-  function parseOr() {
-    let node = parseAnd();
-    while (peek() && peek().type === "||") {
-      take("||");
-      node = { type: "||", left: node, right: parseAnd() };
-    }
-    return node;
-  }
-
-  if (!tokens.length) throw new Error("empty");
-  const tree = parseOr();
-  if (pos !== tokens.length) throw new Error("trailing input");
-  return tree;
-}
-
-export function evalTagNode(node, p) {
-  if (!node) return false;
-  if (node.type === "tag") return postMatchesAtom(p, node.value);
-  if (node.type === "&") return evalTagNode(node.left, p) && evalTagNode(node.right, p);
-  if (node.type === "||") return evalTagNode(node.left, p) || evalTagNode(node.right, p);
-  return false;
+  return t;
 }
 
 /**
- * While typing, strip trailing incomplete ops so `/tag meta&` still filters.
+ * Split by top-level separator (e.g. '||' or '&'), respecting parentheses.
+ */
+function splitTopLevel(s, sep) {
+  const out = [];
+  let depth = 0;
+  let buf = "";
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "(") {
+      depth++;
+      buf += ch;
+      continue;
+    }
+    if (ch === ")") {
+      depth--;
+      buf += ch;
+      continue;
+    }
+    if (depth === 0 && s.startsWith(sep, i)) {
+      out.push(buf.trim());
+      buf = "";
+      i += sep.length - 1;
+      continue;
+    }
+    buf += ch;
+  }
+  out.push(buf.trim());
+  return out.filter(Boolean);
+}
+
+/**
+ * Soften incomplete queries while typing: drop trailing & / || / (
  */
 export function softenTagQuery(q) {
-  let s = String(q || "").trim();
-  s = s.replace(/(\s*(&|\|\||\()\s*)+$/g, "").trim();
-  return s;
+  return String(q || "")
+    .trim()
+    .replace(/(\s*(&|\|\||\()\s*)+$/g, "")
+    .trim();
+}
+
+/**
+ * Evaluate a tag expression against one post.
+ * Grammar (top-down): OR (||) > AND (&) > ( groups ) > atom
+ */
+export function postMatchesTagExpr(p, expr) {
+  const raw = softenTagQuery(expr);
+  if (!raw) return postTags(p).length > 0;
+
+  function evalExpr(s) {
+    const t = stripOuterParens(s);
+    const orParts = splitTopLevel(t, "||");
+    if (orParts.length > 1) {
+      return orParts.some((part) => evalExpr(part));
+    }
+    const andParts = splitTopLevel(t, "&");
+    if (andParts.length > 1) {
+      return andParts.every((part) => evalExpr(part));
+    }
+    const atom = t.trim();
+    if (!atom) return true;
+    if (!TAG_ATOM_RE.test(atom) && /[()]/.test(atom)) {
+      // unbalanced junk — no match
+      return false;
+    }
+    // single atom (allow @)
+    const m = atom.match(TAG_ATOM_RE);
+    if (!m || m[0] !== atom.replace(/\s/g, "")) {
+      // if leftover parens-only, fail soft
+      const cleaned = atom.replace(/[()\s]/g, "");
+      if (!cleaned) return true;
+      return postMatchesAtom(p, cleaned);
+    }
+    return postMatchesAtom(p, m[0]);
+  }
+
+  return evalExpr(raw);
 }
 
 export function filterPostsByTag(posts, query, maxLen = TAG_EXPR_MAX) {
@@ -164,34 +168,11 @@ export function filterPostsByTag(posts, query, maxLen = TAG_EXPR_MAX) {
   if (raw.length > maxLen) {
     return { posts: [], error: `tag expr max ${maxLen} chars` };
   }
-
-  function tryFilter(expr) {
-    const tree = parseTagExpr(expr);
-    return list.filter((p) => evalTagNode(tree, p));
-  }
-
+  // Always soft-parse for live typing; never throw to the UI.
   try {
-    return { posts: tryFilter(raw), error: null };
+    const hits = list.filter((p) => postMatchesTagExpr(p, raw));
+    return { posts: hits, error: null };
   } catch (err) {
-    const soft = softenTagQuery(raw);
-    if (soft && soft !== raw) {
-      try {
-        return { posts: tryFilter(soft), error: null };
-      } catch (_) {
-        /* fall through */
-      }
-    }
-    // last complete tag token as prefix hint (still typing)
-    const tokens = [...raw.matchAll(/@?[A-Za-z0-9_\-\u4e00-\u9fff]+/g)].map(
-      (m) => m[0]
-    );
-    if (tokens.length) {
-      const last = tokens[tokens.length - 1];
-      return {
-        posts: list.filter((p) => postMatchesAtom(p, last)),
-        error: null,
-      };
-    }
     return {
       posts: [],
       error: "tag parse: " + (err && err.message ? err.message : "error"),

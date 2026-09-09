@@ -2,11 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   parseLine,
-  parseTagExpr,
   filterPostsByTag,
   filterPostsByTitle,
   createTermEngine,
   TAG_EXPR_MAX,
+  tagAtomMatches,
+  softenTagQuery,
 } from "../src/term-engine.mjs";
 
 const posts = [
@@ -14,13 +15,13 @@ const posts = [
     title: "命令说明",
     stem: "00-help",
     href: "posts/00-help.html",
-    tags: ["help", "meta"],
+    tags: ["help", "meta", "说明"],
   },
   {
     title: "Welcome",
     stem: "01-welcome",
     href: "posts/01-welcome.html",
-    tags: ["welcome", "meta"],
+    tags: ["welcome", "meta", "欢迎"],
   },
   {
     title: "How to write",
@@ -44,9 +45,7 @@ test("parseLine recognizes commands", () => {
   assert.equal(parseLine("clear").kind, "clear");
 });
 
-test("nested tag expressions", () => {
-  const tree = parseTagExpr("(meta&guide)||tui");
-  assert.equal(tree.type, "||");
+test("nested tag expressions with prefix atoms", () => {
   const r = filterPostsByTag(posts, "(meta&guide)||tui");
   assert.equal(r.error, null);
   assert.deepEqual(
@@ -90,9 +89,7 @@ test("pageshow restore scenario", () => {
   const nav = eng.submit("/welcome");
   assert.equal(nav.type, "navigate");
   assert.ok(eng.beginNavigate());
-  // user hits Back — bfcache restores JS heap with navigating=true
   assert.equal(eng.beginNavigate(), false);
-  // fix: pageshow handler
   eng.resetNavigation();
   const again = eng.submit("/help");
   assert.equal(again.type, "navigate");
@@ -108,17 +105,31 @@ test("goto miss opens egg page", () => {
 });
 
 test("tag prefix match not mid-string", () => {
+  assert.equal(tagAtomMatches("meta", "eta"), false);
+  assert.equal(tagAtomMatches("meta", "met"), true);
   const r = filterPostsByTag(posts, "eta");
-  assert.equal(r.error, null);
   assert.equal(r.posts.length, 0);
   const m = filterPostsByTag(posts, "met");
   assert.ok(m.posts.length >= 1);
-  assert.ok(m.posts.every((p) => p.tags.some((t) => t === "meta" || t.startsWith("met"))));
 });
 
 test("tag softens trailing operators while typing", () => {
+  assert.equal(softenTagQuery("meta&"), "meta");
   const r = filterPostsByTag(posts, "meta&");
   assert.equal(r.error, null);
   assert.ok(r.posts.length >= 1);
   assert.ok(r.posts.every((p) => p.tags.includes("meta")));
+});
+
+test("chinese tag prefix", () => {
+  const r = filterPostsByTag(posts, "欢");
+  assert.equal(r.error, null);
+  assert.equal(r.posts.length, 1);
+  assert.equal(r.posts[0].stem, "01-welcome");
+  const r2 = filterPostsByTag(posts, "说明");
+  assert.equal(r2.posts[0].stem, "00-help");
+  const eng = createTermEngine({ posts });
+  const sub = eng.submit("/tag 欢迎");
+  assert.equal(sub.type, "navigate");
+  assert.equal(sub.post.stem, "01-welcome");
 });

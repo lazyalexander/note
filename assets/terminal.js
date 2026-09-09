@@ -1,5 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=14";
-import { aboutSearch } from "./about-search.js?v=14";
+import { createTermEngine } from "./term-engine.js?v=15";
 
 (function () {
   "use strict";
@@ -110,7 +109,8 @@ import { aboutSearch } from "./about-search.js?v=14";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const result = await aboutSearch(query, 5, function (msg) {
+      const mod = await import("./about-search.js?v=15");
+      const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
       matches = result.hits || [];
@@ -194,10 +194,15 @@ import { aboutSearch } from "./about-search.js?v=14";
   }
 
   function isImeBusy(e) {
-    // Enter during IME confirms candidates — never submit.
-    // Do NOT treat keyCode 229 alone as busy (breaks submit on some CJK setups).
-    if (composing || (e && e.isComposing)) return true;
+    // Real IME busy = browser says so. Sticky `composing` alone must NOT
+    // block forever (compositionend can be missed). Never gate on keyCode 229.
+    if (e && e.isComposing) return true;
+    if (composing && e && e.key !== "Enter") return true;
     return false;
+  }
+
+  function clearComposing() {
+    composing = false;
   }
 
   function reviveAfterHistory() {
@@ -212,14 +217,18 @@ import { aboutSearch } from "./about-search.js?v=14";
     composing = true;
   });
   input.addEventListener("compositionend", function () {
+    // Defer one tick so the committed characters are in input.value (Safari).
     setTimeout(function () {
-      composing = false;
+      clearComposing();
       refresh();
     }, 0);
   });
+  input.addEventListener("blur", clearComposing);
 
   input.addEventListener("input", function (e) {
-    if (composing || (e && e.isComposing)) return;
+    // If browser is not composing, sticky flag is stale — clear it.
+    if (e && e.isComposing) return;
+    if (composing) clearComposing();
     refresh();
   });
 
@@ -255,6 +264,8 @@ import { aboutSearch } from "./about-search.js?v=14";
       return;
     }
     if (e.key !== "Enter") return;
+    // Sticky composing without isComposing = missed compositionend; clear it.
+    if (composing && !(e && e.isComposing)) clearComposing();
     e.preventDefault();
     applyAction(engine.submit(input.value, selected));
   });

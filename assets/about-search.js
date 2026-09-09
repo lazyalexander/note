@@ -3,7 +3,7 @@
  * Passage vectors are precomputed; query uses Xenova/multilingual-e5-small.
  */
 const MODEL = "Xenova/multilingual-e5-small";
-const CDN : "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/+esm";
+const CDN = "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/+esm";
 
 let loadState = "idle";
 let loadError = null;
@@ -21,7 +21,7 @@ function cosine(a, b) {
 function resolveEmbeddingsUrl() {
   const base =
     typeof window !== "undefined" && window.__BASE__ != null
-      /? String(window.__BASE__)
+      ? String(window.__BASE__)
       : "";
   const prefix = base && base !== "/" ? base.replace(/\/$/, "") + "/" : "";
   return prefix + "assets/embeddings.json";

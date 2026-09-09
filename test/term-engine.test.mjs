@@ -10,6 +10,7 @@ import {
   softenTagQuery,
   scrubInvisible,
   normalizeTag,
+  codepointsHex,
 } from "../src/term-engine.mjs";
 
 const posts = [
@@ -212,4 +213,10 @@ test("createTermEngine suggest /tag meta with ZWSP is not no-match", () => {
 
   const liveMe = eng.suggest("/tag me\u200b");
   assert.equal(liveMe.matches.length, 3);
+});
+
+
+test("no-match diagnostic codepointsHex exposes ZWSP", () => {
+  assert.equal(codepointsHex("meta\u200b"), "6d 65 74 61 200b");
+  assert.equal(scrubInvisible("a\u200b\u2060b"), "ab");
 });

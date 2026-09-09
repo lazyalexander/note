@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=19";
+import { createTermEngine } from "./term-engine.js?v=20";
 
 (function () {
   "use strict";
@@ -127,7 +127,7 @@ import { createTermEngine } from "./term-engine.js?v=19";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=19");
+      const mod = await import("./about-search.js?v=20");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -208,8 +208,18 @@ import { createTermEngine } from "./term-engine.js?v=19";
       result.parsed.query != null &&
       String(result.parsed.query).trim() !== ""
     ) {
-      // Always surface count so a clipped dropdown is still obvious.
-      setEcho(matches.length ? matches.length + " match(es)" : "no match");
+      if (matches.length) {
+        setEcho(matches.length + " match(es) · v20");
+      } else {
+        // Show raw codepoints so IME invisible chars are diagnosable.
+        var q = String(result.parsed.query);
+        var hex = Array.prototype.map
+          .call(q, function (ch) {
+            return ch.codePointAt(0).toString(16);
+          })
+          .join(" ");
+        setEcho("no match · v20 · cp " + hex, true);
+      }
     } else {
       setEcho("");
     }
@@ -308,7 +318,7 @@ import { createTermEngine } from "./term-engine.js?v=19";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=19")
+  import("./about-search.js?v=20")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

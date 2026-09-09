@@ -17,12 +17,21 @@ export const EGG_POST = {
  * Also NFKC + fullwidth ASCII → halfwidth so ＂ｍｅｔａ＂ ≡ "meta".
  */
 export function scrubInvisible(s) {
-  return String(s || "")
-    .normalize("NFKC")
-    .replace(
-      /[\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB]/gu,
-      ""
-    );
+  return (
+    String(s || "")
+      .normalize("NFKC")
+      // All Unicode Format chars (ZWSP/BOM/bidi/soft-hyphen/…) — IME favorites.
+      .replace(/\p{Cf}/gu, "")
+      // Other controls except TAB/LF/CR (should not appear in tags anyway).
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+  );
+}
+
+/** Hex codepoints for diagnostics (e.g. echo when tag query misses). */
+export function codepointsHex(s) {
+  return [...String(s || "")]
+    .map((c) => c.codePointAt(0).toString(16))
+    .join(" ");
 }
 
 export function normalizeTag(t) {

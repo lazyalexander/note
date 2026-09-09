@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=17";
+import { createTermEngine } from "./term-engine.js?v=18";
 
 (function () {
   "use strict";
@@ -22,12 +22,30 @@ import { createTermEngine } from "./term-engine.js?v=17";
       .replace(/"/g, "&quot;");
   }
 
+  function activeTagQuery() {
+    var parsed = engine.parseLine(input.value);
+    if (parsed.kind !== "tag" || parsed.query == null) return "";
+    return String(parsed.query).trim();
+  }
+
+  function tagMatchesQuery(tag, q) {
+    if (!q) return false;
+    // last atom after & / || / ( for highlight
+    var parts = q.split(/[&|()]+/);
+    var atom = (parts[parts.length - 1] || "").trim().replace(/^@/, "").toLowerCase();
+    if (!atom) return false;
+    var t = String(tag || "").toLowerCase();
+    return t === atom || t.startsWith(atom);
+  }
+
   function formatTags(p) {
     const tags = Array.isArray(p.tags) ? p.tags : [];
     if (!tags.length) return "";
+    var q = activeTagQuery();
     return tags
-      .map(function (t) {
-        return '<span class="suggest-tag">@' + escapeHtml(t) + "</span>";
+      .map(function (tg) {
+        var cls = "suggest-tag" + (tagMatchesQuery(tg, q) ? " match" : "");
+        return '<span class="' + cls + '">@' + escapeHtml(tg) + "</span>";
       })
       .join(" ");
   }
@@ -109,7 +127,7 @@ import { createTermEngine } from "./term-engine.js?v=17";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=17");
+      const mod = await import("./about-search.js?v=18");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -180,10 +198,21 @@ import { createTermEngine } from "./term-engine.js?v=17";
   function refresh() {
     if (composing) return;
     const result = engine.suggest(input.value);
-    if (result.error) setEcho(result.error, true);
-    else setEcho("");
     matches = result.matches || [];
     if (selected >= matches.length) selected = Math.max(0, matches.length - 1);
+    if (result.error) {
+      setEcho(result.error, true);
+    } else if (
+      result.parsed &&
+      (result.parsed.kind === "tag" || result.parsed.kind === "goto") &&
+      result.parsed.query != null &&
+      String(result.parsed.query).trim() !== ""
+    ) {
+      // Always surface count so a clipped dropdown is still obvious.
+      setEcho(matches.length ? matches.length + " match(es)" : "no match");
+    } else {
+      setEcho("");
+    }
     renderSuggest();
   }
 
@@ -279,7 +308,7 @@ import { createTermEngine } from "./term-engine.js?v=17";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=17")
+  import("./about-search.js?v=18")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

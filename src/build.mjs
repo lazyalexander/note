@@ -11,9 +11,6 @@ const rawBase = process.env.BASE_PATH ?? "/note";
 const BASE = rawBase === "/" ? "" : rawBase.replace(/\/$/, "");
 const baseHref = BASE ? BASE + "/" : "/";
 
-const TAG_TOKEN = "@[\\w\\-\\u4e00-\\u9fff]+";
-const TAG_LINE_RE = new RegExp(`^(${TAG_TOKEN})(\\s+${TAG_TOKEN})*$`);
-
 function escapeHtml(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -33,37 +30,6 @@ function sortKey(stem, title) {
 function extractTitle(md, stem) {
   const m = md.match(/^#\s+(.+)$/m);
   return m ? m[1].trim() : stem;
-}
-
-function extractTags(md) {
-  const lines = md.split(/\r?\n/);
-  let h1Index = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (/^#\s+/.test(lines[i])) {
-      h1Index = i;
-      break;
-    }
-  }
-  if (h1Index === -1) return { tags: [], mdWithoutTags: md };
-
-  let tagLineIndex = -1;
-  for (let i = h1Index + 1; i < lines.length; i++) {
-    if (lines[i].trim() === "") continue;
-    tagLineIndex = i;
-    break;
-  }
-
-  if (tagLineIndex === -1) return { tags: [], mdWithoutTags: md };
-
-  const trimmed = lines[tagLineIndex].trim();
-  if (!TAG_LINE_RE.test(trimmed)) return { tags: [], mdWithoutTags: md };
-
-  const tags = [...trimmed.matchAll(new RegExp(TAG_TOKEN, "g"))].map((m) =>
-    m[0].slice(1)
-  );
-  const next = lines.slice();
-  next.splice(tagLineIndex, 1);
-  return { tags, mdWithoutTags: next.join("\n") };
 }
 
 function href(path) {
@@ -130,17 +96,27 @@ async function main() {
     const stem = file.replace(/\.md$/, "");
     const md = await readFile(join(postsDir, file), "utf8");
     const title = extractTitle(md, stem);
-    const { tags, mdWithoutTags } = extractTags(md);
+    let meta = { tags: [] };
+    try {
+      const rawMeta = await readFile(join(postsDir, stem + ".json"), "utf8");
+      meta = JSON.parse(rawMeta);
+    } catch (err) {
+      if (!err || err.code !== "ENOENT") throw err;
+    }
+    const tags = Array.isArray(meta.tags)
+      ? meta.tags.map((x) => String(x)).filter(Boolean)
+      : [];
     const key = sortKey(stem, title);
-    let htmlBody = marked.parse(mdWithoutTags);
+    let htmlBody = marked.parse(md);
     if (tags.length) {
       const tagsHtml = `<p class="tags">${tags
-        .map((t) => `<span class="tag">@${escapeHtml(t)}</span>`)
+        .map((tg) => `<span class="tag">@${escapeHtml(tg)}</span>`)
         .join(" ")}</p>`;
       htmlBody = htmlBody.replace(/<\/h1>/i, `</h1>\n${tagsHtml}`);
     }
     const outName = stem + ".html";
-    posts.push({ stem, title, key, outName, htmlBody, tags });
+    // Keep full meta for future fields; index still exposes tags.
+    posts.push({ stem, title, key, outName, htmlBody, tags, meta });
   }
 
   posts.sort((a, b) => a.key - b.key || a.stem.localeCompare(b.stem));
@@ -154,7 +130,7 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=21"></script>`;
+<script type="module" src="assets/terminal.js?v=22"></script>`;
 
   const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
   const eggScripts = `${scripts}

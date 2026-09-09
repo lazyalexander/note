@@ -71,7 +71,7 @@ async function main() {
     const stem = file.replace(/\.md$/, "");
     const md = await readFile(join(postsDir, file), "utf8");
     const title = extractTitle(md, stem);
-    const tags = extractTags(md);
+    const tags = [];
     const body = stripMd(md);
     const tagLine = tags.length ? tags.map((t) => "@" + t).join(" ") : "";
     const head = `${title}. ${tagLine}`.trim();

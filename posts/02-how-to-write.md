@@ -1,16 +1,13 @@
 # How to write a new post
-@guide @meta
 
-1. Add md file under posts/
-2. Numeric prefix for order
-3. First line is H1 title
-4. Next non-empty line may be tags: @foo @bar
-5. Commit to main
+1. Add `NN-title.md` under `posts/` (numeric prefix sets order).
+2. First line is the H1 title.
+3. Add a sibling `NN-title.json` for metadata (tags and future fields):
 
-## Markdown
+```json
+{
+  "tags": ["guide", "meta"]
+}
+```
 
-- bold, italic
-- links
-- code blocks
-
-Done.
+4. Push to `main` — GitHub Actions builds and publishes.

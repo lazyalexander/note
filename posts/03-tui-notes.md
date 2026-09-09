@@ -1,6 +1,5 @@
 # TUI Notes
 
-@tui @design
 
 A tiny static blog with terminal vibes.
 

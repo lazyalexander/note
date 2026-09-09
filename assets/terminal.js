@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.mjs?v=21";
+import { createTermEngine } from "./term-engine.mjs?v=22";
 
 (function () {
   "use strict";
@@ -125,7 +125,7 @@ import { createTermEngine } from "./term-engine.mjs?v=21";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=21");
+      const mod = await import("./about-search.js?v=22");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -207,7 +207,7 @@ import { createTermEngine } from "./term-engine.mjs?v=21";
       String(result.parsed.query).trim() !== ""
     ) {
       if (matches.length) {
-        setEcho(matches.length + " match(es) · v21");
+        setEcho(matches.length + " match(es) · v22");
       } else {
         // Show raw codepoints so IME invisible chars are diagnosable.
         var q = String(result.parsed.query);
@@ -216,7 +216,7 @@ import { createTermEngine } from "./term-engine.mjs?v=21";
             return ch.codePointAt(0).toString(16);
           })
           .join(" ");
-        setEcho("no match · v21 · cp " + hex, true);
+        setEcho("no match · v22 · cp " + hex, true);
       }
     } else {
       setEcho("");
@@ -316,7 +316,7 @@ import { createTermEngine } from "./term-engine.mjs?v=21";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=21")
+  import("./about-search.js?v=22")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

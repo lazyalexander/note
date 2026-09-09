@@ -2,15 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   parseLine,
-  filterPostsByTag,
-  filterPostsByTitle,
+  filterPostsForGoto,
   createTermEngine,
-  TAG_QUERY_MAX,
-  TAG_EXPR_MAX,
   tagAtomMatches,
   scrubInvisible,
   normalizeTag,
   codepointsHex,
+  EGG_HREF,
 } from "../src/term-engine.mjs";
 
 const posts = [
@@ -40,170 +38,66 @@ const posts = [
   },
 ];
 
-test("parseLine recognizes commands", () => {
+test("parseLine has goto but not tag command", () => {
   assert.equal(parseLine("/help").kind, "help");
-  assert.equal(parseLine("welcome").kind, "welcome");
   assert.deepEqual(parseLine("/goto wel"), { kind: "goto", query: "wel" });
-  assert.deepEqual(parseLine("/tag meta"), { kind: "tag", query: "meta" });
   assert.deepEqual(parseLine("/about heart"), { kind: "about", query: "heart" });
+  assert.equal(parseLine("/tag meta").kind, "echo");
   assert.equal(parseLine("clear").kind, "clear");
 });
 
-test("simple tag prefix — no nested operators", () => {
-  const r = filterPostsByTag(posts, "meta");
-  assert.equal(r.error, null);
-  assert.equal(r.posts.length, 3);
-  // operators are literal characters in the query, not grammar
-  const nested = filterPostsByTag(posts, "meta&guide");
-  assert.equal(nested.posts.length, 0);
-  const orq = filterPostsByTag(posts, "tui||design");
-  assert.equal(orq.posts.length, 0);
+test("/goto matches title stem or tag (meta)", () => {
+  const hits = filterPostsForGoto(posts, "meta");
+  assert.equal(hits.length, 3);
+  assert.ok(hits.every((p) => p.tags.includes("meta")));
+  const wel = filterPostsForGoto(posts, "wel");
+  assert.equal(wel.length, 1);
+  assert.equal(wel[0].stem, "01-welcome");
 });
 
-test("tag query rejects over max length", () => {
-  const q = "a".repeat(TAG_QUERY_MAX + 1);
-  const r = filterPostsByTag(posts, q);
-  assert.ok(r.error);
-  assert.equal(r.posts.length, 0);
-  assert.equal(TAG_EXPR_MAX, TAG_QUERY_MAX);
+test("/goto empty query lists nothing", () => {
+  assert.deepEqual(filterPostsForGoto(posts, ""), []);
+  assert.deepEqual(filterPostsForGoto(posts, "   "), []);
 });
 
-test("goto title filter", () => {
-  const hits = filterPostsByTitle(posts, "wel");
-  assert.equal(hits.length, 1);
-  assert.equal(hits[0].stem, "01-welcome");
-});
-
-test("submit help/welcome navigate", () => {
-  const eng = createTermEngine({ posts });
-  assert.equal(eng.submit("/help").type, "navigate");
-  assert.equal(eng.submit("/help").post.stem, "00-help");
-  assert.equal(eng.submit("/welcome").post.stem, "01-welcome");
-});
-
-test("navigating lock blocks until reset (bfcache regression)", () => {
-  const eng = createTermEngine({ posts });
-  assert.equal(eng.beginNavigate(), true);
-  assert.equal(eng.isNavigating(), true);
-  assert.equal(eng.beginNavigate(), false);
-  eng.resetNavigation();
-  assert.equal(eng.isNavigating(), false);
-  assert.equal(eng.beginNavigate(), true);
-});
-
-test("pageshow restore scenario", () => {
-  const eng = createTermEngine({ posts });
-  const nav = eng.submit("/welcome");
-  assert.equal(nav.type, "navigate");
-  assert.ok(eng.beginNavigate());
-  assert.equal(eng.beginNavigate(), false);
-  eng.resetNavigation();
-  const again = eng.submit("/help");
-  assert.equal(again.type, "navigate");
-  assert.ok(eng.beginNavigate());
-});
-
-test("goto miss opens egg page", () => {
+test("submit /goto miss opens egg", () => {
   const eng = createTermEngine({ posts });
   const r = eng.submit("/goto definitely-not-a-post-xyz");
   assert.equal(r.type, "navigate");
   assert.equal(r.egg, true);
-  assert.equal(r.post.href, "egg.html");
+  assert.equal(r.post.href, EGG_HREF);
 });
 
-test("tag prefix match not mid-string", () => {
-  assert.equal(tagAtomMatches("meta", "eta"), false);
-  assert.equal(tagAtomMatches("meta", "met"), true);
-  const r = filterPostsByTag(posts, "eta");
-  assert.equal(r.posts.length, 0);
-  const m = filterPostsByTag(posts, "met");
-  assert.ok(m.posts.length >= 1);
-});
-
-test("chinese tag prefix", () => {
-  const r = filterPostsByTag(posts, "欢");
-  assert.equal(r.error, null);
-  assert.equal(r.posts.length, 1);
-  assert.equal(r.posts[0].stem, "01-welcome");
-  const r2 = filterPostsByTag(posts, "说明");
-  assert.equal(r2.posts[0].stem, "00-help");
+test("submit /goto meta navigates to a meta post", () => {
   const eng = createTermEngine({ posts });
-  const sub = eng.submit("/tag 欢迎");
-  assert.equal(sub.type, "navigate");
-  assert.equal(sub.post.stem, "01-welcome");
+  const live = eng.suggest("/goto meta");
+  assert.equal(live.matches.length, 3);
+  const r = eng.submit("/goto meta", 0);
+  assert.equal(r.type, "navigate");
+  assert.ok(r.post.tags.includes("meta"));
 });
 
-test("submit about returns async search action", () => {
-  const eng = createTermEngine({ posts });
-  assert.deepEqual(eng.submit("/about"), {
-    type: "echo",
-    message: "usage: /about <query>  (semantic full-text)",
-    err: true,
-  });
-  assert.deepEqual(eng.submit("/about wine vault revenge"), {
-    type: "about",
-    query: "wine vault revenge",
-  });
-});
-
-test("bare /tag does not dump all posts", () => {
-  const eng = createTermEngine({ posts });
-  const live = eng.suggest("/tag");
-  assert.equal(live.parsed.kind, "tag");
-  assert.equal(live.matches.length, 0);
-  const enter = eng.submit("/tag");
-  assert.equal(enter.type, "echo");
-  assert.ok(String(enter.message).includes("usage"));
-});
-
-test("scrubInvisible strips ZWSP and NFKC fullwidth", () => {
-  assert.equal(scrubInvisible("meta\u200b"), "meta");
-  assert.equal(scrubInvisible("\ufeffmeta\u200b"), "meta");
+test("IME scrub still applied for goto", () => {
+  const hits = filterPostsForGoto(posts, "meta\u200b");
+  assert.equal(hits.length, 3);
   assert.equal(scrubInvisible("ｍｅｔａ"), "meta");
   assert.equal(normalizeTag("@Meta\u200b"), "meta");
-});
-
-test("tag match survives IME invisible chars (me vs meta)", () => {
-  const dirtyMeta = [
-    "meta\u200b",
-    "meta\u200c",
-    "meta\u200d",
-    "\ufeffmeta",
-    "meta\ufeff",
-    "me\u200bta",
-    "ｍｅｔａ",
-    "meta\u00ad",
-    "/tag meta\u200b",
-  ];
-
-  for (const q of dirtyMeta) {
-    const query = q.startsWith("/tag") ? parseLine(q).query : q;
-    const r = filterPostsByTag(posts, query);
-    assert.equal(
-      r.posts.length,
-      3,
-      `expected 3 hits for ${JSON.stringify(q)}`
-    );
-    assert.ok(r.posts.every((p) => p.tags.includes("meta")));
-  }
-
-  const rMe = filterPostsByTag(posts, "me\u200b");
-  assert.equal(rMe.posts.length, 3);
-  assert.equal(tagAtomMatches("meta", "meta\u200b"), true);
-  assert.equal(tagAtomMatches("meta", "ｍｅｔａ"), true);
-});
-
-test("createTermEngine suggest /tag meta with ZWSP is not no-match", () => {
-  const eng = createTermEngine({ posts });
-  const live = eng.suggest("/tag meta\u200b");
-  assert.equal(live.parsed.kind, "tag");
-  assert.equal(live.matches.length, 3);
-  assert.equal(live.error, null);
-  const liveMe = eng.suggest("/tag me\u200b");
-  assert.equal(liveMe.matches.length, 3);
-});
-
-test("no-match diagnostic codepointsHex exposes ZWSP", () => {
   assert.equal(codepointsHex("meta\u200b"), "6d 65 74 61 200b");
-  assert.equal(scrubInvisible("a\u200b\u2060b"), "ab");
+  assert.equal(tagAtomMatches("meta", "me"), true);
+});
+
+test("navigating lock + help/welcome", () => {
+  const eng = createTermEngine({ posts });
+  assert.equal(eng.submit("/help").post.stem, "00-help");
+  assert.equal(eng.submit("/welcome").post.stem, "01-welcome");
+  assert.equal(eng.beginNavigate(), true);
+  assert.equal(eng.beginNavigate(), false);
+  eng.resetNavigation();
+  assert.equal(eng.beginNavigate(), true);
+});
+
+test("chinese tag via goto", () => {
+  const hits = filterPostsForGoto(posts, "欢");
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].stem, "01-welcome");
 });

@@ -1,26 +1,14 @@
 /** Pure terminal command engine for the note TUI blog. */
 import { scrubInvisible, codepointsHex, normalizeTag } from "./text-scrub.mjs";
-import {
-  TAG_QUERY_MAX,
-  postTags,
-  tagAtomMatches,
-  postMatchesAtom,
-  filterPostsByTag,
-} from "./tag-match.mjs";
+import { postTags, tagAtomMatches } from "./tag-match.mjs";
 
 export {
   scrubInvisible,
   codepointsHex,
   normalizeTag,
-  TAG_QUERY_MAX,
   postTags,
   tagAtomMatches,
-  postMatchesAtom,
-  filterPostsByTag,
 };
-
-/** @deprecated use TAG_QUERY_MAX */
-export const TAG_EXPR_MAX = TAG_QUERY_MAX;
 
 /** Hidden page for /goto with no matches. */
 export const EGG_HREF = "egg.html";
@@ -35,25 +23,44 @@ export function parseLine(raw) {
   const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
   if (/^\/?welcome$/i.test(line)) return { kind: "welcome" };
-  let m = line.match(/^\/?tag(?:\s+(.*))?$/i);
-  if (m) return { kind: "tag", query: m[1] == null ? null : m[1] };
-  m = line.match(/^\/?goto(?:\s+(.*))?$/i);
+  let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
   if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
   m = line.match(/^\/?about(?:\s+(.*))?$/i);
   if (m) return { kind: "about", query: m[1] == null ? null : m[1] };
   if (/^clear$/i.test(line)) return { kind: "clear" };
+  // Former /tag command — point people to /goto.
+  m = line.match(/^\/?tag(?:\s+(.*))?$/i);
+  if (m) {
+    return {
+      kind: "echo",
+      message:
+        "/tag removed — use /goto <query> (title or tag)",
+      err: true,
+    };
+  }
   return { kind: "other", text: line };
 }
 
-export function filterPostsByTitle(posts, query) {
+/**
+ * /goto search: title/stem substring OR tag prefix/exact.
+ * Scrubs IME junk first. Empty query → no list (never dump catalog).
+ */
+export function filterPostsForGoto(posts, query) {
   const list = Array.isArray(posts) ? posts : [];
-  const q = scrubInvisible(query).trim().toLowerCase();
-  if (!q) return list.slice();
-  return list.filter(
-    (p) =>
-      String(p.title).toLowerCase().includes(q) ||
-      String(p.stem).toLowerCase().includes(q)
-  );
+  const q = scrubInvisible(query).trim().replace(/^@+/, "");
+  if (!q) return [];
+  const qLower = q.toLowerCase();
+  return list.filter((p) => {
+    const title = String(p.title || "").toLowerCase();
+    const stem = String(p.stem || "").toLowerCase();
+    if (title.includes(qLower) || stem.includes(qLower)) return true;
+    return postTags(p).some((tg) => tagAtomMatches(tg, q));
+  });
+}
+
+/** @deprecated alias */
+export function filterPostsByTitle(posts, query) {
+  return filterPostsForGoto(posts, query);
 }
 
 export function findPostByStem(posts, stem) {
@@ -90,33 +97,32 @@ export function findWelcomePost(posts) {
  */
 export function createTermEngine(options = {}) {
   const posts = Array.isArray(options.posts) ? options.posts : [];
-  const tagQueryMax = options.tagExprMax ?? options.tagQueryMax ?? TAG_QUERY_MAX;
   let navigating = false;
 
   function suggest(raw) {
     const parsed = parseLine(raw);
+    if (parsed.kind === "echo") {
+      return { parsed, matches: [], error: parsed.message };
+    }
     if (parsed.kind === "goto") {
       if (parsed.query === null) return { parsed, matches: [], error: null };
       return {
         parsed,
-        matches: filterPostsByTitle(posts, parsed.query),
+        matches: filterPostsForGoto(posts, parsed.query),
         error: null,
       };
-    }
-    if (parsed.kind === "tag") {
-      if (parsed.query === null) return { parsed, matches: [], error: null };
-      const r = filterPostsByTag(posts, parsed.query, tagQueryMax);
-      return { parsed, matches: r.posts, error: r.error };
     }
     return { parsed, matches: [], error: null };
   }
 
   function pickGoto(matches, query, selectedIndex) {
     if (!matches.length) return null;
-    const q = scrubInvisible(query).trim().toLowerCase();
-    const exact = matches.filter(
-      (p) => p.title.toLowerCase() === q || p.stem.toLowerCase() === q
-    );
+    const q = scrubInvisible(query).trim().toLowerCase().replace(/^@+/, "");
+    const exact = matches.filter((p) => {
+      if (String(p.title).toLowerCase() === q || String(p.stem).toLowerCase() === q)
+        return true;
+      return postTags(p).some((tg) => normalizeTag(tg) === q);
+    });
     if (exact.length === 1) return exact[0];
     const i =
       selectedIndex >= 0 && selectedIndex < matches.length ? selectedIndex : 0;
@@ -144,33 +150,17 @@ export function createTermEngine(options = {}) {
     if (parsed.kind === "clear") return { type: "clear" };
 
     if (parsed.kind === "goto") {
-      if (parsed.query === null) return { type: "noop" };
+      if (parsed.query === null) {
+        return {
+          type: "echo",
+          message: "usage: /goto <query>  (title, stem, or tag)",
+          err: true,
+        };
+      }
       const post = pickGoto(matches, parsed.query, selectedIndex);
+      // Miss → easter egg page (kept on purpose).
       if (!post) return { type: "navigate", post: EGG_POST, egg: true };
       return { type: "navigate", post };
-    }
-    if (parsed.kind === "tag") {
-      const tagQ =
-        parsed.query == null ? "" : scrubInvisible(parsed.query).trim();
-      if (!tagQ) {
-        return {
-          type: "echo",
-          message: "usage: /tag <prefix>  e.g. /tag poe  or  /tag 欢",
-          err: true,
-        };
-      }
-      if (!matches.length) {
-        return {
-          type: "echo",
-          message: "no match: " + tagQ + " · cp " + codepointsHex(parsed.query),
-          err: true,
-        };
-      }
-      const i =
-        selectedIndex >= 0 && selectedIndex < matches.length
-          ? selectedIndex
-          : 0;
-      return { type: "navigate", post: matches[i] };
     }
 
     if (parsed.kind === "about") {
@@ -191,8 +181,8 @@ export function createTermEngine(options = {}) {
     parseLine,
     suggest,
     submit,
-    filterPostsByTitle: (q) => filterPostsByTitle(posts, q),
-    filterPostsByTag: (q) => filterPostsByTag(posts, q, tagQueryMax),
+    filterPostsForGoto: (q) => filterPostsForGoto(posts, q),
+    filterPostsByTitle: (q) => filterPostsForGoto(posts, q),
     findHelpPost: () => findHelpPost(posts),
     findWelcomePost: () => findWelcomePost(posts),
     isNavigating: () => navigating,
@@ -201,7 +191,6 @@ export function createTermEngine(options = {}) {
       navigating = true;
       return true;
     },
-    /** Call on pageshow / visibility restore after bfcache back. */
     resetNavigation() {
       navigating = false;
     },

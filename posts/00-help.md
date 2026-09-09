@@ -1,6 +1,5 @@
 # 命令说明
 
-
 在首页终端输入命令。
 
 ## /welcome
@@ -9,29 +8,13 @@
 
 ## /goto
 
-按标题跳转。`/goto` 后加关键字，列出匹配标题；↑↓ / Tab 选择，回车打开。
+按**标题 / 文件名 / 标签**跳转（标签在同名 `.json` 里）。↑↓ / Tab 选择，回车打开。无匹配则进彩蛋页。
 
 ```
 /goto 欢迎
 /goto wel
-```
-
-## /tag
-
-按标签筛选。标签写在同名 JSON 元数据里（不进正文）：
-
-```
-posts/02-how-to-write.md
-posts/02-how-to-write.json  →  { "tags": ["guide", "meta"] }
-```
-
-标签按**前缀**匹配（支持中文），最长 64 字符：
-
-```
-/tag intro
-/tag meta
-/tag 欢
-/tag poe
+/goto meta
+/goto poe
 ```
 
 ## /about

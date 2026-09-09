@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=23";
+import { createTermEngine } from "./term-engine.js?v=24";
 
 (function () {
   "use strict";
@@ -24,7 +24,7 @@ import { createTermEngine } from "./term-engine.js?v=23";
 
   function activeTagQuery() {
     var parsed = engine.parseLine(input.value);
-    if (parsed.kind !== "tag" || parsed.query == null) return "";
+    if (parsed.kind !== "goto" || parsed.query == null) return "";
     return String(parsed.query).trim();
   }
 
@@ -125,7 +125,7 @@ import { createTermEngine } from "./term-engine.js?v=23";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=23");
+      const mod = await import("./about-search.js?v=24");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -202,7 +202,7 @@ import { createTermEngine } from "./term-engine.js?v=23";
       setEcho(result.error, true);
     } else if (
       result.parsed &&
-      (result.parsed.kind === "tag" || result.parsed.kind === "goto") &&
+      (result.parsed.kind === "goto") &&
       result.parsed.query != null &&
       String(result.parsed.query).trim() !== ""
     ) {
@@ -211,7 +211,7 @@ import { createTermEngine } from "./term-engine.js?v=23";
           matches.length +
             " match(es) · " +
             result.parsed.kind +
-            " · v23 · posts=" +
+            " · v24 · posts=" +
             posts.length
         );
       } else {
@@ -227,7 +227,7 @@ import { createTermEngine } from "./term-engine.js?v=23";
         setEcho(
           "no match · " +
             result.parsed.kind +
-            " · v23 · cp " +
+            " · v24 · cp " +
             hex +
             " · posts=" +
             posts.length +
@@ -334,7 +334,7 @@ import { createTermEngine } from "./term-engine.js?v=23";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=23")
+  import("./about-search.js?v=24")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

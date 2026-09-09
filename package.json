@@ -5,9 +5,11 @@
   "description": "Minimal TUI-style static blog for GitHub Pages",
   "scripts": {
     "build": "node src/build.mjs",
+    "embed": "node scripts/build-embeddings.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@xenova/transformers": "^2.17.2",
     "marked": "^15.0.0"
   },
   "type": "module"

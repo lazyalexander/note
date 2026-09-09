@@ -42,6 +42,7 @@ test("parseLine recognizes commands", () => {
   assert.equal(parseLine("welcome").kind, "welcome");
   assert.deepEqual(parseLine("/goto wel"), { kind: "goto", query: "wel" });
   assert.deepEqual(parseLine("/tag a&b"), { kind: "tag", query: "a&b" });
+  assert.deepEqual(parseLine("/about heart"), { kind: "about", query: "heart" });
   assert.equal(parseLine("clear").kind, "clear");
 });
 
@@ -132,4 +133,18 @@ test("chinese tag prefix", () => {
   const sub = eng.submit("/tag 欢迎");
   assert.equal(sub.type, "navigate");
   assert.equal(sub.post.stem, "01-welcome");
+});
+
+
+test("submit about returns async search action", () => {
+  const eng = createTermEngine({ posts });
+  assert.deepEqual(eng.submit("/about"), {
+    type: "echo",
+    message: "usage: /about <query>  (semantic full-text)",
+    err: true,
+  });
+  assert.deepEqual(eng.submit("/about wine vault revenge"), {
+    type: "about",
+    query: "wine vault revenge",
+  });
 });

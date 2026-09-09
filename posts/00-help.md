@@ -37,6 +37,18 @@
 /tag ((tui||design)&meta)
 ```
 
+## /about
+
+全文语义检索（multilingual-e5）。支持中文自然语言查询；首次会加载模型，回车后显示耗时：
+
+```
+/about 心跳 谋杀
+/about black cat guilt
+/about 酒窖 复仇
+```
+
+结果按相似度排序，终端回显 `load / query / total` 毫秒。
+
 ## /help
 
 打开本页。输入 `/help` 后按回车跳转。

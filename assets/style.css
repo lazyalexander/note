@@ -283,3 +283,10 @@ article.post a:hover { color: var(--blue); }
 #play-button:disabled{opacity:0.5;cursor:default}
 #ba-status{color:var(--comment);font-size:0.85rem;margin:0.35rem 0 0.75rem}
 .ba-credit{color:var(--comment);font-size:0.75rem;margin-top:0.75rem}
+
+.suggest-score {
+  margin-left: 0.5rem;
+  color: #7aa2f7;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}

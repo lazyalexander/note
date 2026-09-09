@@ -114,6 +114,8 @@ async function main() {
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "src", "term-engine.mjs"), join(distDir, "assets", "term-engine.js"));
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
+  await cp(join(root, "assets", "about-search.js"), join(distDir, "assets", "about-search.js"));
+  await cp(join(root, "assets", "embeddings.json"), join(distDir, "assets", "embeddings.json"));
   await cp(join(root, "src", "term-engine.mjs"), join(root, "assets", "term-engine.js"));
   await mkdir(join(distDir, "assets", "bad-apple"), { recursive: true });
   await cp(join(root, "assets", "bad-apple"), join(distDir, "assets", "bad-apple"), { recursive: true });
@@ -149,7 +151,7 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=13"></script>`;
+<script type="module" src="assets/terminal.js?v=14"></script>`;
 
   const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
   const eggScripts = `${scripts}

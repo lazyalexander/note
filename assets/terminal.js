@@ -1,4 +1,5 @@
-import { createTermEngine } from "./term-engine.js?v=13";
+import { createTermEngine } from "./term-engine.js?v=14";
+import { aboutSearch } from "./about-search.js?v=14";
 
 (function () {
   "use strict";
@@ -60,6 +61,9 @@ import { createTermEngine } from "./term-engine.js?v=13";
         '</span><span class="suggest-title">' +
         escapeHtml(p.title) +
         "</span>" +
+        (p.scoreLabel
+          ? '<span class="suggest-score">' + escapeHtml(p.scoreLabel) + "</span>"
+          : "") +
         (tagsHtml ? '<span class="suggest-tags">' + tagsHtml + "</span>" : "") +
         '<span class="suggest-stem">' +
         escapeHtml(p.stem) +
@@ -96,6 +100,54 @@ import { createTermEngine } from "./term-engine.js?v=13";
     window.location.assign(a.href);
   }
 
+  let aboutBusy = false;
+
+  async function runAbout(query) {
+    if (aboutBusy) return;
+    aboutBusy = true;
+    matches = [];
+    selected = 0;
+    renderSuggest();
+    setEcho("about: searching…");
+    try {
+      const result = await aboutSearch(query, 5, function (msg) {
+        setEcho("about: " + msg);
+      });
+      matches = result.hits || [];
+      selected = 0;
+      renderSuggest();
+      if (!matches.length) {
+        setEcho(
+          "about: no hits · load " +
+            result.loadMs +
+            "ms · query " +
+            result.queryMs +
+            "ms",
+          true
+        );
+      } else {
+        setEcho(
+          "about: " +
+            matches.length +
+            " hits · load " +
+            result.loadMs +
+            "ms · query " +
+            result.queryMs +
+            "ms · total " +
+            result.totalMs +
+            "ms"
+        );
+      }
+    } catch (err) {
+      setEcho(
+        "about error: " + (err && err.message ? err.message : String(err)),
+        true
+      );
+    } finally {
+      aboutBusy = false;
+    }
+  }
+
   function applyAction(action) {
     if (!action) return;
     if (action.type === "navigate") {
@@ -112,6 +164,10 @@ import { createTermEngine } from "./term-engine.js?v=13";
       matches = [];
       selected = 0;
       renderSuggest();
+      return;
+    }
+    if (action.type === "about") {
+      runAbout(action.query);
       return;
     }
     if (action.type === "suggest") {

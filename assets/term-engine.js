@@ -26,6 +26,8 @@ export function parseLine(raw) {
   if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
   m = line.match(/^\/?tag(?:\s+(.*))?$/i);
   if (m) return { kind: "tag", query: m[1] == null ? null : m[1] };
+  m = line.match(/^\/?about(?:\s+(.*))?$/i);
+  if (m) return { kind: "about", query: m[1] == null ? null : m[1] };
   if (/^clear$/i.test(line)) return { kind: "clear" };
   return { kind: "other", text: line };
 }
@@ -298,6 +300,17 @@ export function createTermEngine(options = {}) {
           ? selectedIndex
           : 0;
       return { type: "navigate", post: matches[i] };
+    }
+
+    if (parsed.kind === "about") {
+      if (parsed.query === null || !String(parsed.query).trim()) {
+        return {
+          type: "echo",
+          message: "usage: /about <query>  (semantic full-text)",
+          err: true,
+        };
+      }
+      return { type: "about", query: String(parsed.query).trim() };
     }
 
     return { type: "echo", message: "command not found: " + line, err: true };

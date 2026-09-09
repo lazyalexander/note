@@ -1,24 +1,71 @@
+/** Auto-bundled from text-scrub + tag-match + term-engine. */
+
+/** IME / Unicode cleanup helpers for the note TUI. */
+
+/**
+ * Strip IME junk (ZWSP/BOM/bidi/…) and NFKC-normalize (fullwidth → halfwidth).
+ */
+export function scrubInvisible(s) {
+  return (
+    String(s || "")
+      .normalize("NFKC")
+      .replace(/\p{Cf}/gu, "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "")
+  );
+}
+
+/** Hex codepoints for diagnostics (shown on tag no-match). */
+export function codepointsHex(s) {
+  return [...String(s || "")]
+    .map((c) => c.codePointAt(0).toString(16))
+    .join(" ");
+}
+
+export function normalizeTag(t) {
+  return scrubInvisible(t)
+    .trim()
+    .toLowerCase()
+    .replace(/^@/, "");
+}
+
+/** Simplest tag filter: one prefix/exact atom, no & / || / parens. */
+export const TAG_QUERY_MAX = 64;
+
+export function postTags(p) {
+  return Array.isArray(p?.tags) ? p.tags : [];
+}
+
+/**
+ * Exact or prefix on normalized tags. Mid-string does NOT match.
+ * ASCII lowercased; Chinese kept as-is after NFKC scrub.
+ */
+export function tagAtomMatches(postTag, atom) {
+  const a = normalizeTag(atom);
+  const t = normalizeTag(postTag);
+  if (!a || !t) return false;
+  return t === a || t.startsWith(a);
+}
+
+export function postMatchesAtom(p, atom) {
+  return postTags(p).some((tg) => tagAtomMatches(tg, atom));
+}
+
+/**
+ * Filter posts by a single tag query string (optional leading @).
+ * Empty → no posts (never dump the catalog).
+ */
+export function filterPostsByTag(posts, query, maxLen = TAG_QUERY_MAX) {
+  const list = Array.isArray(posts) ? posts : [];
+  const raw = scrubInvisible(query).trim().replace(/^@+/, "");
+  if (!raw) return { posts: [], error: null };
+  if (raw.length > maxLen) {
+    return { posts: [], error: `tag query max ${maxLen} chars` };
+  }
+  const hits = list.filter((p) => postMatchesAtom(p, raw));
+  return { posts: hits, error: null };
+}
+
 /** Pure terminal command engine for the note TUI blog. */
-import { scrubInvisible, codepointsHex, normalizeTag } from "./text-scrub.mjs";
-import {
-  TAG_QUERY_MAX,
-  postTags,
-  tagAtomMatches,
-  postMatchesAtom,
-  filterPostsByTag,
-} from "./tag-match.mjs";
-
-export {
-  scrubInvisible,
-  codepointsHex,
-  normalizeTag,
-  TAG_QUERY_MAX,
-  postTags,
-  tagAtomMatches,
-  postMatchesAtom,
-  filterPostsByTag,
-};
-
 /** @deprecated use TAG_QUERY_MAX */
 export const TAG_EXPR_MAX = TAG_QUERY_MAX;
 
@@ -207,3 +254,4 @@ export function createTermEngine(options = {}) {
     },
   };
 }
+

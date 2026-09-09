@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.mjs?v=22";
+import { createTermEngine } from "./term-engine.js?v=23";
 
 (function () {
   "use strict";
@@ -125,7 +125,7 @@ import { createTermEngine } from "./term-engine.mjs?v=22";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=22");
+      const mod = await import("./about-search.js?v=23");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -207,16 +207,34 @@ import { createTermEngine } from "./term-engine.mjs?v=22";
       String(result.parsed.query).trim() !== ""
     ) {
       if (matches.length) {
-        setEcho(matches.length + " match(es) · v22");
+        setEcho(
+          matches.length +
+            " match(es) · " +
+            result.parsed.kind +
+            " · v23 · posts=" +
+            posts.length
+        );
       } else {
-        // Show raw codepoints so IME invisible chars are diagnosable.
         var q = String(result.parsed.query);
         var hex = Array.prototype.map
           .call(q, function (ch) {
             return ch.codePointAt(0).toString(16);
           })
           .join(" ");
-        setEcho("no match · v22 · cp " + hex, true);
+        var tagged = posts.filter(function (p) {
+          return Array.isArray(p.tags) && p.tags.length;
+        }).length;
+        setEcho(
+          "no match · " +
+            result.parsed.kind +
+            " · v23 · cp " +
+            hex +
+            " · posts=" +
+            posts.length +
+            " · tagged=" +
+            tagged,
+          true
+        );
       }
     } else {
       setEcho("");
@@ -316,7 +334,7 @@ import { createTermEngine } from "./term-engine.mjs?v=22";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=22")
+  import("./about-search.js?v=23")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

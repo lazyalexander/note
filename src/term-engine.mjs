@@ -35,10 +35,10 @@ export function parseLine(raw) {
   const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
   if (/^\/?welcome$/i.test(line)) return { kind: "welcome" };
-  let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
-  if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
-  m = line.match(/^\/?tag(?:\s+(.*))?$/i);
+  let m = line.match(/^\/?tag(?:\s+(.*))?$/i);
   if (m) return { kind: "tag", query: m[1] == null ? null : m[1] };
+  m = line.match(/^\/?goto(?:\s+(.*))?$/i);
+  if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
   m = line.match(/^\/?about(?:\s+(.*))?$/i);
   if (m) return { kind: "about", query: m[1] == null ? null : m[1] };
   if (/^clear$/i.test(line)) return { kind: "clear" };

@@ -78,8 +78,27 @@ async function main() {
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
-  const engineFiles = ["text-scrub.mjs", "tag-match.mjs", "term-engine.mjs"];
-  for (const f of engineFiles) {
+  // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
+  const scrubSrc = await readFile(join(root, "src", "text-scrub.mjs"), "utf8");
+  const tagSrc = await readFile(join(root, "src", "tag-match.mjs"), "utf8");
+  const engSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
+  function stripImports(src) {
+    return src.replace(/^import\s+[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "");
+  }
+  function stripReexport(src) {
+    return src.replace(/^export\s*\{[\s\S]*?\};\s*/m, "");
+  }
+  const engineBundle = [
+    "/** Auto-bundled from text-scrub + tag-match + term-engine. */",
+    scrubSrc.trim(),
+    stripImports(tagSrc).trim(),
+    stripReexport(stripImports(engSrc)).trim(),
+    "",
+  ].join("\n\n");
+  await writeFile(join(root, "assets", "term-engine.js"), engineBundle);
+  await writeFile(join(distDir, "assets", "term-engine.js"), engineBundle);
+  // Keep split sources in dist for debugging / egg raw view of entry.
+  for (const f of ["text-scrub.mjs", "tag-match.mjs", "term-engine.mjs"]) {
     await cp(join(root, "src", f), join(distDir, "assets", f));
     await cp(join(root, "src", f), join(root, "assets", f));
   }
@@ -130,9 +149,9 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=22"></script>`;
+<script type="module" src="assets/terminal.js?v=23"></script>`;
 
-  const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
+  const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}
 <script src="assets/bad-apple/lz-string.min.js"></script>
 <script src="assets/bad-apple/player.js?v=1"></script>`;
@@ -146,8 +165,8 @@ async function main() {
 </audio>
 <p class="ba-credit">ASCII player adapted from <a href="https://github.com/EmirXK/bad_apple" target="_blank" rel="noopener noreferrer">EmirXK/bad_apple</a> (MIT). Animation: Bad Apple!! feat. nomico.</p>
 </div></div>
-<div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.mjs</div><div class="box-body">
-<p class="egg-msg">source · <a href="assets/term-engine.mjs">raw file</a></p>
+<div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.js</div><div class="box-body">
+<p class="egg-msg">source · <a href="assets/term-engine.js">raw file</a></p>
 <pre class="egg-source"><code>${escapeHtml(engineSrc)}</code></pre>
 </div></div>`;
   await writeFile(

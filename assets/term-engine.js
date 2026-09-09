@@ -11,15 +11,29 @@ export const EGG_POST = {
   tags: [],
 };
 
+/**
+ * Strip IME / Unicode junk that looks empty but breaks exact tag match:
+ * ZWSP, ZWNJ/ZWJ, BOM, soft hyphen, word joiner, bidi marks, etc.
+ * Also NFKC + fullwidth ASCII → halfwidth so ＂ｍｅｔａ＂ ≡ "meta".
+ */
+export function scrubInvisible(s) {
+  return String(s || "")
+    .normalize("NFKC")
+    .replace(
+      /[\u00AD\u034F\u061C\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF\uFFF9-\uFFFB]/gu,
+      ""
+    );
+}
+
 export function normalizeTag(t) {
-  return String(t || "")
+  return scrubInvisible(t)
     .trim()
     .toLowerCase()
     .replace(/^@/, "");
 }
 
 export function parseLine(raw) {
-  const line = String(raw || "").trim();
+  const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
   if (/^\/?welcome$/i.test(line)) return { kind: "welcome" };
   let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
@@ -114,7 +128,7 @@ function splitTopLevel(s, sep) {
  * Soften incomplete queries while typing: drop trailing & / || / (
  */
 export function softenTagQuery(q) {
-  return String(q || "")
+  return scrubInvisible(q)
     .trim()
     .replace(/(\s*(&|\|\||\()\s*)+$/g, "")
     .trim();
@@ -144,11 +158,11 @@ export function postMatchesTagExpr(p, expr) {
       // unbalanced junk — no match
       return false;
     }
-    // single atom (allow @)
-    const m = atom.match(TAG_ATOM_RE);
-    if (!m || m[0] !== atom.replace(/\s/g, "")) {
-      // if leftover parens-only, fail soft
-      const cleaned = atom.replace(/[()\s]/g, "");
+    // single atom (allow @); scrub invisibles so IME ZWSP does not break ===
+    const atomClean = scrubInvisible(atom).replace(/\s/g, "");
+    const m = atomClean.match(TAG_ATOM_RE);
+    if (!m || m[0] !== atomClean) {
+      const cleaned = atomClean.replace(/[()]/g, "");
       if (!cleaned) return true;
       return postMatchesAtom(p, cleaned);
     }
@@ -160,7 +174,7 @@ export function postMatchesTagExpr(p, expr) {
 
 export function filterPostsByTag(posts, query, maxLen = TAG_EXPR_MAX) {
   const list = Array.isArray(posts) ? posts : [];
-  const raw = String(query || "").trim();
+  const raw = scrubInvisible(query).trim();
   // Empty expr → no matches (never dump the whole catalog).
   if (!raw) {
     return { posts: [], error: null };

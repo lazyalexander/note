@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=18";
+import { createTermEngine } from "./term-engine.js?v=19";
 
 (function () {
   "use strict";
@@ -127,7 +127,7 @@ import { createTermEngine } from "./term-engine.js?v=18";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=18");
+      const mod = await import("./about-search.js?v=19");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -308,7 +308,7 @@ import { createTermEngine } from "./term-engine.js?v=18";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=18")
+  import("./about-search.js?v=19")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

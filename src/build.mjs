@@ -151,7 +151,7 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=18"></script>`;
+<script type="module" src="assets/terminal.js?v=19"></script>`;
 
   const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
   const eggScripts = `${scripts}

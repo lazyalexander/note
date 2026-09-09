@@ -8,6 +8,8 @@ import {
   TAG_EXPR_MAX,
   tagAtomMatches,
   softenTagQuery,
+  scrubInvisible,
+  normalizeTag,
 } from "../src/term-engine.mjs";
 
 const posts = [
@@ -158,4 +160,56 @@ test("bare /tag does not dump all posts", () => {
   const enter = eng.submit("/tag");
   assert.equal(enter.type, "echo");
   assert.ok(String(enter.message).includes("usage"));
+});
+
+
+test("scrubInvisible strips ZWSP and NFKC fullwidth", () => {
+  assert.equal(scrubInvisible("meta\u200b"), "meta");
+  assert.equal(scrubInvisible("\ufeffmeta\u200b"), "meta");
+  assert.equal(scrubInvisible("ｍｅｔａ"), "meta"); // fullwidth via NFKC
+  assert.equal(normalizeTag("@Meta\u200b"), "meta");
+});
+
+test("tag match survives IME invisible chars (me vs meta)", () => {
+  // Reproduce: trailing ZWSP / BOM / ZWNJ often inserted by CJK IME on commit.
+  const dirtyMeta = [
+    "meta\u200b",
+    "meta\u200c",
+    "meta\u200d",
+    "\ufeffmeta",
+    "meta\ufeff",
+    "me\u200bta",
+    "ｍｅｔａ",
+    "meta\u00ad", // soft hyphen
+    "/tag meta\u200b",
+  ];
+
+  for (const q of dirtyMeta) {
+    const query = q.startsWith("/tag") ? parseLine(q).query : q;
+    const r = filterPostsByTag(posts, query);
+    assert.equal(
+      r.posts.length,
+      3,
+      `expected 3 hits for ${JSON.stringify(q)} codepoints=${[...String(query)].map((c) => c.codePointAt(0).toString(16))}`
+    );
+    assert.ok(r.posts.every((p) => p.tags.includes("meta")));
+  }
+
+  // Prefix with junk still matches while typing
+  const rMe = filterPostsByTag(posts, "me\u200b");
+  assert.equal(rMe.posts.length, 3);
+
+  assert.equal(tagAtomMatches("meta", "meta\u200b"), true);
+  assert.equal(tagAtomMatches("meta", "ｍｅｔａ"), true);
+});
+
+test("createTermEngine suggest /tag meta with ZWSP is not no-match", () => {
+  const eng = createTermEngine({ posts });
+  const live = eng.suggest("/tag meta\u200b");
+  assert.equal(live.parsed.kind, "tag");
+  assert.equal(live.matches.length, 3);
+  assert.equal(live.error, null);
+
+  const liveMe = eng.suggest("/tag me\u200b");
+  assert.equal(liveMe.matches.length, 3);
 });

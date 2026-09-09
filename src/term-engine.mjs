@@ -161,11 +161,9 @@ export function postMatchesTagExpr(p, expr) {
 export function filterPostsByTag(posts, query, maxLen = TAG_EXPR_MAX) {
   const list = Array.isArray(posts) ? posts : [];
   const raw = String(query || "").trim();
+  // Empty expr → no matches (never dump the whole catalog).
   if (!raw) {
-    return {
-      posts: list.filter((p) => postTags(p).length > 0),
-      error: null,
-    };
+    return { posts: [], error: null };
   }
   if (raw.length > maxLen) {
     return { posts: [], error: `tag expr max ${maxLen} chars` };
@@ -241,10 +239,9 @@ export function createTermEngine(options = {}) {
       };
     }
     if (parsed.kind === "tag") {
-      // Bare `/tag` (no args) should still list tagged posts while typing,
-      // same as Enter on `/tag`. Empty query = all posts that have tags.
-      const q = parsed.query == null ? "" : parsed.query;
-      const r = filterPostsByTag(posts, q, tagExprMax);
+      // No query yet (just `/tag`) → no dropdown. Need an expression to filter.
+      if (parsed.query === null) return { parsed, matches: [], error: null };
+      const r = filterPostsByTag(posts, parsed.query, tagExprMax);
       return { parsed, matches: r.posts, error: r.error };
     }
     return { parsed, matches: [], error: null };
@@ -289,14 +286,16 @@ export function createTermEngine(options = {}) {
       return { type: "navigate", post };
     }
     if (parsed.kind === "tag") {
-      if (parsed.query === null) {
+      const tagQ = parsed.query == null ? "" : String(parsed.query).trim();
+      if (!tagQ) {
         return {
-          type: "suggest",
-          matches: filterPostsByTag(posts, "", tagExprMax).posts,
+          type: "echo",
+          message: "usage: /tag <expr>  e.g. /tag poe  or  /tag meta&intro",
+          err: true,
         };
       }
       if (!matches.length)
-        return { type: "echo", message: "no match: " + parsed.query, err: true };
+        return { type: "echo", message: "no match: " + tagQ, err: true };
       const i =
         selectedIndex >= 0 && selectedIndex < matches.length
           ? selectedIndex

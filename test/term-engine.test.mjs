@@ -150,10 +150,12 @@ test("submit about returns async search action", () => {
 });
 
 
-test("bare /tag suggests all tagged posts while typing", () => {
+test("bare /tag does not dump all posts", () => {
   const eng = createTermEngine({ posts });
-  const r = eng.suggest("/tag");
-  assert.equal(r.parsed.kind, "tag");
-  assert.ok(r.matches.length >= 3);
-  assert.equal(r.error, null);
+  const live = eng.suggest("/tag");
+  assert.equal(live.parsed.kind, "tag");
+  assert.equal(live.matches.length, 0);
+  const enter = eng.submit("/tag");
+  assert.equal(enter.type, "echo");
+  assert.ok(String(enter.message).includes("usage"));
 });

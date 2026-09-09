@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=16";
+import { createTermEngine } from "./term-engine.js?v=17";
 
 (function () {
   "use strict";
@@ -109,7 +109,7 @@ import { createTermEngine } from "./term-engine.js?v=16";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=16");
+      const mod = await import("./about-search.js?v=17");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -276,6 +276,16 @@ import { createTermEngine } from "./term-engine.js?v=16";
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key.length === 1 || e.key === "Backspace") input.focus();
   });
+
+  // Warm /about index + e5 model in the background so first /about is snappy.
+  // Failures stay quiet — /about will surface errors on demand.
+  import("./about-search.js?v=17")
+    .then(function (mod) {
+      if (mod && typeof mod.ensureAboutReady === "function") {
+        return mod.ensureAboutReady(null);
+      }
+    })
+    .catch(function () {});
 
   reviveAfterHistory();
   input.focus();

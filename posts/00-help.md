@@ -27,14 +27,13 @@
 @intro @meta
 ```
 
-标签按**前缀**匹配（支持中文）。可用 `&`（且）、`||`（或）、括号；最长 64 字符：
+标签按**前缀**匹配（支持中文），最长 64 字符。不做 `&` / `||` / 括号嵌套：
 
 ```
 /tag intro
-/tag meta&intro
-/tag tui||design
-/tag (meta&guide)||tui
-/tag ((tui||design)&meta)
+/tag meta
+/tag 欢
+/tag poe
 ```
 
 ## /about

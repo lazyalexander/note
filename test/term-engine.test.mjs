@@ -5,9 +5,9 @@ import {
   filterPostsByTag,
   filterPostsByTitle,
   createTermEngine,
+  TAG_QUERY_MAX,
   TAG_EXPR_MAX,
   tagAtomMatches,
-  softenTagQuery,
   scrubInvisible,
   normalizeTag,
   codepointsHex,
@@ -44,25 +44,28 @@ test("parseLine recognizes commands", () => {
   assert.equal(parseLine("/help").kind, "help");
   assert.equal(parseLine("welcome").kind, "welcome");
   assert.deepEqual(parseLine("/goto wel"), { kind: "goto", query: "wel" });
-  assert.deepEqual(parseLine("/tag a&b"), { kind: "tag", query: "a&b" });
+  assert.deepEqual(parseLine("/tag meta"), { kind: "tag", query: "meta" });
   assert.deepEqual(parseLine("/about heart"), { kind: "about", query: "heart" });
   assert.equal(parseLine("clear").kind, "clear");
 });
 
-test("nested tag expressions with prefix atoms", () => {
-  const r = filterPostsByTag(posts, "(meta&guide)||tui");
+test("simple tag prefix — no nested operators", () => {
+  const r = filterPostsByTag(posts, "meta");
   assert.equal(r.error, null);
-  assert.deepEqual(
-    r.posts.map((p) => p.stem).sort(),
-    ["02-how-to-write", "03-tui-notes"].sort()
-  );
+  assert.equal(r.posts.length, 3);
+  // operators are literal characters in the query, not grammar
+  const nested = filterPostsByTag(posts, "meta&guide");
+  assert.equal(nested.posts.length, 0);
+  const orq = filterPostsByTag(posts, "tui||design");
+  assert.equal(orq.posts.length, 0);
 });
 
-test("tag expr rejects over max length", () => {
-  const q = "a".repeat(TAG_EXPR_MAX + 1);
+test("tag query rejects over max length", () => {
+  const q = "a".repeat(TAG_QUERY_MAX + 1);
   const r = filterPostsByTag(posts, q);
   assert.ok(r.error);
   assert.equal(r.posts.length, 0);
+  assert.equal(TAG_EXPR_MAX, TAG_QUERY_MAX);
 });
 
 test("goto title filter", () => {
@@ -117,14 +120,6 @@ test("tag prefix match not mid-string", () => {
   assert.ok(m.posts.length >= 1);
 });
 
-test("tag softens trailing operators while typing", () => {
-  assert.equal(softenTagQuery("meta&"), "meta");
-  const r = filterPostsByTag(posts, "meta&");
-  assert.equal(r.error, null);
-  assert.ok(r.posts.length >= 1);
-  assert.ok(r.posts.every((p) => p.tags.includes("meta")));
-});
-
 test("chinese tag prefix", () => {
   const r = filterPostsByTag(posts, "欢");
   assert.equal(r.error, null);
@@ -137,7 +132,6 @@ test("chinese tag prefix", () => {
   assert.equal(sub.type, "navigate");
   assert.equal(sub.post.stem, "01-welcome");
 });
-
 
 test("submit about returns async search action", () => {
   const eng = createTermEngine({ posts });
@@ -152,7 +146,6 @@ test("submit about returns async search action", () => {
   });
 });
 
-
 test("bare /tag does not dump all posts", () => {
   const eng = createTermEngine({ posts });
   const live = eng.suggest("/tag");
@@ -163,16 +156,14 @@ test("bare /tag does not dump all posts", () => {
   assert.ok(String(enter.message).includes("usage"));
 });
 
-
 test("scrubInvisible strips ZWSP and NFKC fullwidth", () => {
   assert.equal(scrubInvisible("meta\u200b"), "meta");
   assert.equal(scrubInvisible("\ufeffmeta\u200b"), "meta");
-  assert.equal(scrubInvisible("ｍｅｔａ"), "meta"); // fullwidth via NFKC
+  assert.equal(scrubInvisible("ｍｅｔａ"), "meta");
   assert.equal(normalizeTag("@Meta\u200b"), "meta");
 });
 
 test("tag match survives IME invisible chars (me vs meta)", () => {
-  // Reproduce: trailing ZWSP / BOM / ZWNJ often inserted by CJK IME on commit.
   const dirtyMeta = [
     "meta\u200b",
     "meta\u200c",
@@ -181,7 +172,7 @@ test("tag match survives IME invisible chars (me vs meta)", () => {
     "meta\ufeff",
     "me\u200bta",
     "ｍｅｔａ",
-    "meta\u00ad", // soft hyphen
+    "meta\u00ad",
     "/tag meta\u200b",
   ];
 
@@ -191,15 +182,13 @@ test("tag match survives IME invisible chars (me vs meta)", () => {
     assert.equal(
       r.posts.length,
       3,
-      `expected 3 hits for ${JSON.stringify(q)} codepoints=${[...String(query)].map((c) => c.codePointAt(0).toString(16))}`
+      `expected 3 hits for ${JSON.stringify(q)}`
     );
     assert.ok(r.posts.every((p) => p.tags.includes("meta")));
   }
 
-  // Prefix with junk still matches while typing
   const rMe = filterPostsByTag(posts, "me\u200b");
   assert.equal(rMe.posts.length, 3);
-
   assert.equal(tagAtomMatches("meta", "meta\u200b"), true);
   assert.equal(tagAtomMatches("meta", "ｍｅｔａ"), true);
 });
@@ -210,11 +199,9 @@ test("createTermEngine suggest /tag meta with ZWSP is not no-match", () => {
   assert.equal(live.parsed.kind, "tag");
   assert.equal(live.matches.length, 3);
   assert.equal(live.error, null);
-
   const liveMe = eng.suggest("/tag me\u200b");
   assert.equal(liveMe.matches.length, 3);
 });
-
 
 test("no-match diagnostic codepointsHex exposes ZWSP", () => {
   assert.equal(codepointsHex("meta\u200b"), "6d 65 74 61 200b");

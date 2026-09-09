@@ -112,11 +112,14 @@ async function main() {
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
-  await cp(join(root, "src", "term-engine.mjs"), join(distDir, "assets", "term-engine.js"));
+  const engineFiles = ["text-scrub.mjs", "tag-match.mjs", "term-engine.mjs"];
+  for (const f of engineFiles) {
+    await cp(join(root, "src", f), join(distDir, "assets", f));
+    await cp(join(root, "src", f), join(root, "assets", f));
+  }
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
   await cp(join(root, "assets", "about-search.js"), join(distDir, "assets", "about-search.js"));
   await cp(join(root, "assets", "embeddings.json"), join(distDir, "assets", "embeddings.json"));
-  await cp(join(root, "src", "term-engine.mjs"), join(root, "assets", "term-engine.js"));
   await mkdir(join(distDir, "assets", "bad-apple"), { recursive: true });
   await cp(join(root, "assets", "bad-apple"), join(distDir, "assets", "bad-apple"), { recursive: true });
 
@@ -151,7 +154,7 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=20"></script>`;
+<script type="module" src="assets/terminal.js?v=21"></script>`;
 
   const engineSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
   const eggScripts = `${scripts}
@@ -167,8 +170,8 @@ async function main() {
 </audio>
 <p class="ba-credit">ASCII player adapted from <a href="https://github.com/EmirXK/bad_apple" target="_blank" rel="noopener noreferrer">EmirXK/bad_apple</a> (MIT). Animation: Bad Apple!! feat. nomico.</p>
 </div></div>
-<div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.js</div><div class="box-body">
-<p class="egg-msg">source · <a href="assets/term-engine.js">raw file</a></p>
+<div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.mjs</div><div class="box-body">
+<p class="egg-msg">source · <a href="assets/term-engine.mjs">raw file</a></p>
 <pre class="egg-source"><code>${escapeHtml(engineSrc)}</code></pre>
 </div></div>`;
   await writeFile(

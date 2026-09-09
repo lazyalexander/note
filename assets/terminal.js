@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=20";
+import { createTermEngine } from "./term-engine.mjs?v=21";
 
 (function () {
   "use strict";
@@ -30,9 +30,7 @@ import { createTermEngine } from "./term-engine.js?v=20";
 
   function tagMatchesQuery(tag, q) {
     if (!q) return false;
-    // last atom after & / || / ( for highlight
-    var parts = q.split(/[&|()]+/);
-    var atom = (parts[parts.length - 1] || "").trim().replace(/^@/, "").toLowerCase();
+    var atom = String(q).trim().replace(/^@+/, "").toLowerCase();
     if (!atom) return false;
     var t = String(tag || "").toLowerCase();
     return t === atom || t.startsWith(atom);
@@ -127,7 +125,7 @@ import { createTermEngine } from "./term-engine.js?v=20";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=20");
+      const mod = await import("./about-search.js?v=21");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -209,7 +207,7 @@ import { createTermEngine } from "./term-engine.js?v=20";
       String(result.parsed.query).trim() !== ""
     ) {
       if (matches.length) {
-        setEcho(matches.length + " match(es) · v20");
+        setEcho(matches.length + " match(es) · v21");
       } else {
         // Show raw codepoints so IME invisible chars are diagnosable.
         var q = String(result.parsed.query);
@@ -218,7 +216,7 @@ import { createTermEngine } from "./term-engine.js?v=20";
             return ch.codePointAt(0).toString(16);
           })
           .join(" ");
-        setEcho("no match · v20 · cp " + hex, true);
+        setEcho("no match · v21 · cp " + hex, true);
       }
     } else {
       setEcho("");
@@ -318,7 +316,7 @@ import { createTermEngine } from "./term-engine.js?v=20";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=20")
+  import("./about-search.js?v=21")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

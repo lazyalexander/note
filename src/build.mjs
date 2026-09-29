@@ -69,7 +69,7 @@ function layout({ title, body, back, scripts, wide }) {
 <title>${escapeHtml(title)}</title>
 <script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
-<link rel="stylesheet" href="assets/style.css?v=31">
+<link rel="stylesheet" href="assets/style.css?v=32">
 </head>
 <body>
 ${termBarHtml()}
@@ -161,8 +161,8 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=31"></script>
-<script src="assets/reader.js?v=31" defer></script>`;
+<script type="module" src="assets/terminal.js?v=32"></script>
+<script src="assets/reader.js?v=32" defer></script>`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}

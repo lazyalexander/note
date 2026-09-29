@@ -5,7 +5,12 @@
   var heads = links
     .map(function (a) { return document.getElementById(a.getAttribute("data-target")); })
     .filter(Boolean);
+  function updateBar() {
+    var d = document.documentElement, m = d.scrollHeight - window.innerHeight;
+    if (bar) bar.style.width = (m > 0 ? Math.min(100, (window.scrollY / m) * 100) : 0) + "%";
+  }
   function onScroll() {
+    if (Date.now() < lockUntil) { updateBar(); return; }
     var doc = document.documentElement;
     var max = doc.scrollHeight - window.innerHeight;
     if (bar) bar.style.width = (max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0) + "%";
@@ -26,10 +31,21 @@
     });
   }
   // <base href> makes plain "#id" links navigate to the site root, so scroll ourselves.
+  var lockUntil = 0;
+  function setActive(id) {
+    links.forEach(function (a) {
+      if (a.getAttribute("data-target") === id) a.setAttribute("aria-current", "location");
+      else a.removeAttribute("aria-current");
+    });
+  }
   function goTo(id, push) {
     var el = document.getElementById(id);
     if (!el) return;
     var y = el.getBoundingClientRect().top + window.scrollY - 72;
+    var maxY = document.documentElement.scrollHeight - window.innerHeight;
+    y = Math.min(y, maxY);
+    lockUntil = Date.now() + 700;
+    setActive(id);
     window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
     try {
       history[push ? "pushState" : "replaceState"](null, "", location.pathname + location.search + "#" + id);

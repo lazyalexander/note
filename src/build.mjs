@@ -2,10 +2,29 @@ import { readdir, readFile, writeFile, mkdir, cp, rm } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
+import hljs from "highlight.js";
 import { loadContent } from "./content.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
+// Fonts: Source Serif 4 + Noto Serif SC (body), Source Sans 3 + Noto Sans SC (UI/headings); Adobe/Google "Source Han" family, designed to pair.
+const FONT_LINKS = [
+  "source-serif-4/400", "source-serif-4/400-italic", "source-serif-4/600",
+  "noto-serif-sc/400", "noto-serif-sc/600",
+  "source-sans-3/400", "source-sans-3/600", "source-sans-3/700",
+  "noto-sans-sc/400", "noto-sans-sc/600", "noto-sans-sc/700",
+].map((f) => `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/${f}.css">`).join("\n");
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      const l = (lang || "").split(/\s+/)[0];
+      let html;
+      if (l && hljs.getLanguage(l)) html = hljs.highlight(text, { language: l, ignoreIllegals: true }).value;
+      else html = escapeHtml(text);
+      return `<pre><code class="hljs${l ? " language-" + escapeHtml(l) : ""}">${html}\n</code></pre>\n`;
+    },
+  },
+});
 const contentDir = join(root, "content");
 const distDir = join(root, "dist");
 const rawBase = process.env.BASE_PATH ?? "/note";
@@ -69,7 +88,10 @@ function layout({ title, body, back, scripts, wide }) {
 <title>${escapeHtml(title)}</title>
 <script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
-<link rel="stylesheet" href="assets/style.css?v=34">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+${FONT_LINKS}
+<link rel="stylesheet" href="assets/style.css?v=35">
+<link rel="stylesheet" href="assets/code.css?v=35">
 </head>
 <body>
 ${termBarHtml()}
@@ -89,6 +111,7 @@ async function main() {
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
+  await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
   const scrubSrc = await readFile(join(root, "src", "text-scrub.mjs"), "utf8");
   const tagSrc = await readFile(join(root, "src", "tag-match.mjs"), "utf8");

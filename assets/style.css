@@ -21,8 +21,8 @@
   --dim: var(--comment);
   --shadow: rgba(0, 0, 0, 0.4);
   --ba-bg: #0d0f18;
-  --read-serif: "Newsreader", Georgia, "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif;
-  --read-sans: "Manrope", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --read-serif: "Source Serif 4", "Noto Serif SC", "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", Georgia, serif;
+  --read-sans: "Source Sans 3", "Noto Sans SC", "PingFang SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
 }
 
 /* Reading themes (warm paper / soft charcoal) */

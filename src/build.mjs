@@ -69,7 +69,7 @@ function layout({ title, body, back, scripts, wide }) {
 <title>${escapeHtml(title)}</title>
 <script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
-<link rel="stylesheet" href="assets/style.css?v=30">
+<link rel="stylesheet" href="assets/style.css?v=31">
 </head>
 <body>
 ${termBarHtml()}
@@ -161,8 +161,8 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=30"></script>
-<script src="assets/reader.js?v=30" defer></script>`;
+<script type="module" src="assets/terminal.js?v=31"></script>
+<script src="assets/reader.js?v=31" defer></script>`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}
@@ -187,18 +187,12 @@ async function main() {
     layout({ title: "???", body: eggBody, back: true, scripts: eggScripts })
   );
 
-  const railHtml = (activeStem) =>
-    seriesList
-      .map((s) => {
-        const links = s.posts
-          .map((q, i) => {
-            const n = String(i + 1).padStart(2, "0");
-            const cls = q.stem === activeStem ? ' class="active"' : "";
-            return `<a${cls} href="posts/${q.outName}"><span class="rail-number">${n}</span><span>${escapeHtml(q.title)}</span></a>`;
-          })
-          .join("\n");
-        const open = s.posts.some((q) => q.stem === activeStem);
-        return `<div class="series-group${open ? " current" : ""}"><a class="series-title" href="posts/${s.posts[0].outName}">${escapeHtml(s.title)}</a>\n${links}</div>`;
+  const railHtml = (post) =>
+    post.series.posts
+      .map((q, i) => {
+        const n = String(i + 1).padStart(2, "0");
+        const cls = q.stem === post.stem ? ' class="active" aria-current="page"' : "";
+        return `<a${cls} href="posts/${q.outName}"><span class="rail-number">${n}</span><span class="rail-text">${escapeHtml(q.title)}</span></a>`;
       })
       .join("\n");
 
@@ -211,7 +205,7 @@ async function main() {
       : "";
     const outlineHtml = post.outline.length
       ? post.outline
-          .map((o) => `<a href="#${o.id}"${o.level === 3 ? ' class="subsection"' : ""}>${escapeHtml(o.text)}</a>`)
+          .map((o) => `<a href="#${o.id}" data-target="${o.id}"${o.level === 3 ? ' class="subsection"' : ""}>${escapeHtml(o.text)}</a>`)
           .join("\n")
       : "";
     const prev = sp[idx - 1];
@@ -224,11 +218,12 @@ async function main() {
     const body = `<div class="reading-progress"><div></div></div>
 <div class="reader-grid">
   <aside class="chapter-rail">
-    <a class="back-to-book" href="${href("")}">← 全部文章</a>
-        <nav class="chapter-navigation">
-${railHtml(post.stem)}
+    <a class="back-to-book" href="${href("")}">← 目录</a>
+    <div class="rail-series">${escapeHtml(post.series.title)}</div>
+    ${post.series.description ? `<p class="rail-desc">${escapeHtml(post.series.description)}</p>` : ""}
+    <nav class="chapter-navigation" aria-label="本文件夹下的文章">
+${railHtml(post)}
     </nav>
-    <div class="rail-bottom"><a href="${href("posts/00-help/help.html")}">命令说明 /help</a></div>
   </aside>
   <main class="reading-main">
     <div class="reader-topline"><a href="${href("")}">首页</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">约 ${post.minutes} 分钟阅读</span></div>
@@ -243,7 +238,7 @@ ${railHtml(post.stem)}
     <p class="footer">note // tui</p>
   </main>
   <aside class="outline-rail">
-    ${outlineHtml ? `<div class="rail-label">本文内容</div><nav class="section-outline">\n${outlineHtml}\n</nav>` : ""}
+    ${outlineHtml ? `<div class="rail-label">本文内容</div><nav class="section-outline" aria-label="本文内容">\n${outlineHtml}\n</nav>` : ""}
     <a class="back-to-top" href="#top">↑ 回到顶部</a>
   </aside>
 </div>`;

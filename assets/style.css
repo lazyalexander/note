@@ -598,3 +598,35 @@ article.post pre code { background: none; }
 .pager a:hover { background: var(--bg-hl); }
 .footer, .reading-main .footer { border-top: none; color: var(--comment); }
 .prose h2 { border-top: none; padding-top: 0; }
+
+/* ===== Reader v3: roomy left list (this folder only), Typora-style outline ===== */
+.reader-grid { grid-template-columns: 280px minmax(0, 1fr) 260px; }
+.chapter-rail { padding: 40px 20px 32px 32px; border-right: 1px solid var(--border); }
+.back-to-book { margin-bottom: 28px; font-size: 0.8rem; }
+.rail-series { font-size: 1.05rem; font-weight: 700; color: var(--fg); line-height: 1.35; margin: 0 0 6px 10px; }
+.rail-desc { margin: 0 0 22px 10px; font-size: 0.78rem; line-height: 1.55; color: var(--comment); }
+.chapter-navigation { gap: 2px; }
+.chapter-navigation > a {
+  display: grid; grid-template-columns: 1.9rem 1fr; align-items: baseline; gap: 4px;
+  padding: 9px 10px; font-size: 0.88rem; line-height: 1.45; border-left: none; border-radius: 6px; color: var(--fg-dim);
+}
+.chapter-navigation > a:hover { background: var(--bg-elev); color: var(--fg); }
+.chapter-navigation > a.active { background: var(--sel); color: var(--fg); font-weight: 650; border-left: none; }
+.rail-number { opacity: 0.55; font-size: 0.78rem; }
+.rail-text { min-width: 0; overflow-wrap: anywhere; }
+
+.outline-rail { padding: 46px 24px 30px 10px; }
+.outline-rail .rail-label { margin: 0 0 12px 10px; letter-spacing: 0.06em; font-size: 0.78rem; }
+.section-outline { border-left: none; gap: 1px; }
+.section-outline a {
+  display: block; margin: 0; padding: 6px 10px; border: none; border-radius: 6px;
+  font-size: 0.84rem; line-height: 1.45; color: var(--comment);
+}
+.section-outline a.subsection { padding-left: 24px; font-size: 0.8rem; opacity: 1; }
+.section-outline a:hover { color: var(--fg); background: var(--bg-elev); }
+.section-outline a[aria-current="location"] { color: var(--fg); background: var(--sel); font-weight: 650; border: none; }
+.back-to-top { margin: 22px 0 0 10px; }
+.chapter-badge { background: var(--sel); }
+.prose h2, .prose h3 { scroll-margin-top: 5rem; }
+@media (max-width: 1200px) { .reader-grid { grid-template-columns: 240px minmax(0, 1fr) 210px; } .chapter-rail { padding-left: 20px; } }
+@media (max-width: 1000px) { .reader-grid { grid-template-columns: 240px minmax(0, 1fr); } }

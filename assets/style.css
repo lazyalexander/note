@@ -528,3 +528,17 @@ html { scroll-behavior: smooth; }
 .series-group { margin-bottom: 1rem; }
 .series-title { padding: 0.2rem 0.75rem; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--comment); }
 .series-group.current .series-title { color: var(--cyan); }
+
+/* ===== Home: top-level folders ===== */
+.folders { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.folder { display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-elev); color: var(--fg); transition: border-color 0.12s, transform 0.12s; }
+.folder:hover { border-color: var(--cyan); text-decoration: none; transform: translateX(2px); color: var(--fg); }
+.folder-icon { color: var(--cyan); font-size: 1.1rem; }
+.folder-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; flex: 1; }
+.folder-name { font-weight: 700; }
+.folder-dir { margin-left: 0.6rem; font-weight: 400; font-size: 0.8rem; color: var(--comment); }
+.folder-desc { color: var(--comment); font-size: 0.85rem; }
+.folder-count { color: var(--comment); font-size: 0.8rem; white-space: nowrap; }
+a.series-title { display: block; color: var(--comment); }
+a.series-title:hover { color: var(--cyan); text-decoration: none; }
+.series-group.current a.series-title { color: var(--cyan); }

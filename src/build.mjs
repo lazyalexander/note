@@ -69,7 +69,7 @@ function layout({ title, body, back, scripts, wide }) {
 <title>${escapeHtml(title)}</title>
 <script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
-<link rel="stylesheet" href="assets/style.css?v=28">
+<link rel="stylesheet" href="assets/style.css?v=29">
 </head>
 <body>
 ${termBarHtml()}
@@ -161,8 +161,8 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=28"></script>
-<script src="assets/reader.js?v=28" defer></script>`;
+<script type="module" src="assets/terminal.js?v=29"></script>
+<script src="assets/reader.js?v=29" defer></script>`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}
@@ -198,7 +198,7 @@ async function main() {
           })
           .join("\n");
         const open = s.posts.some((q) => q.stem === activeStem);
-        return `<div class="series-group${open ? " current" : ""}"><div class="series-title">${escapeHtml(s.title)}</div>\n${links}</div>`;
+        return `<div class="series-group${open ? " current" : ""}"><a class="series-title" href="posts/${s.posts[0].outName}">${escapeHtml(s.title)}</a>\n${links}</div>`;
       })
       .join("\n");
 
@@ -258,22 +258,13 @@ ${railHtml(post.stem)}
     JSON.stringify({ base: BASE, posts: postsIndex }, null, 2) + "\n"
   );
 
-  const seriesHtml = seriesList
-    .map((s, si) => {
-      const sn = String(si + 1).padStart(2, "0");
-      const items = s.posts
-        .map((p, i) => {
-          const n = String(i + 1).padStart(2, "0");
-          const tagBits = p.tags.length
-            ? ` <span class="menu-tags">${p.tags.map((tg) => "@" + escapeHtml(tg)).join(" ")}</span>`
-            : "";
-          return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a>${tagBits}</li>`;
-        })
-        .join("\n");
-      const desc = s.description ? `<p class="series-desc">${escapeHtml(s.description)}</p>` : "";
-      return `<section class="series"><h2 class="series-head"><span class="series-no">${sn}</span>${escapeHtml(s.title)}<span class="series-count">${s.posts.length}</span></h2>${desc}<ul class="menu">${items}</ul></section>`;
+  const seriesHtml = `<ul class="folders">${seriesList
+    .map((s) => {
+      const first = s.posts[0];
+      const desc = s.description ? `<span class="folder-desc">${escapeHtml(s.description)}</span>` : "";
+      return `<li><a class="folder" href="posts/${first.outName}"><span class="folder-icon" aria-hidden="true">▸</span><span class="folder-body"><span class="folder-name">${escapeHtml(s.title)}<span class="folder-dir">${escapeHtml(s.dir)}/</span></span>${desc}</span><span class="folder-count">${s.posts.length} 篇</span></a></li>`;
     })
-    .join("\n");
+    .join("\n")}</ul>`;
 
   const banner = String.raw`██╗    ██╗███████╗██╗      ██████╗ ██████╗ ███╗   ███╗███████╗██╗
 ██║    ██║██╔════╝██║     ██╔════╝██╔═══██╗████╗ ████║██╔════╝██║
@@ -286,7 +277,7 @@ ${railHtml(post.stem)}
   <pre class="banner" role="img" aria-label="Welcome!">${banner}</pre>
   <p class="hero-sub">终端式的静态博客。顶部命令栏输入 <code>/goto</code> 跳转，<code>/about</code> 语义搜索，<code>/theme</code> 切换主题；不记得命令就看 <a href="posts/00-help/help.html">/help → 命令说明</a>。</p>
 </section>
-<div class="rail-label">全部内容 · ${seriesList.length} 个系列 · ${posts.length} 篇</div>
+<div class="rail-label">目录 · ${seriesList.length} 个文件夹</div>
 ${seriesHtml}
 <p class="footer">note // tui</p>
 </div>`;

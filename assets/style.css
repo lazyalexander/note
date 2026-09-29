@@ -517,3 +517,14 @@ html { scroll-behavior: smooth; }
   .brand { display: none; }
   .term-kbd { display: none; }
 }
+
+/* ===== Series (folder) grouping ===== */
+.series { margin: 1.75rem 0 0; }
+.series-head { display: flex; align-items: baseline; gap: 0.6rem; margin: 0; font-size: 1.05rem; color: var(--fg); border-bottom: 1px solid var(--border); padding-bottom: 0.45rem; }
+.series-no { color: var(--comment); font-weight: 400; font-size: 0.85rem; }
+.series-count { margin-left: auto; color: var(--comment); font-size: 0.8rem; font-weight: 400; }
+.series-desc { margin: 0.45rem 0 0; color: var(--comment); font-size: 0.85rem; }
+.series .menu { margin-top: 0.5rem; }
+.series-group { margin-bottom: 1rem; }
+.series-title { padding: 0.2rem 0.75rem; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--comment); }
+.series-group.current .series-title { color: var(--cyan); }

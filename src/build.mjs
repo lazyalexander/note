@@ -1,11 +1,12 @@
-import { readdir, readFile, writeFile, mkdir, cp } from "node:fs/promises";
+import { readdir, readFile, writeFile, mkdir, cp, rm } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
+import { loadContent } from "./content.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const postsDir = join(root, "posts");
+const contentDir = join(root, "content");
 const distDir = join(root, "dist");
 const rawBase = process.env.BASE_PATH ?? "/note";
 const BASE = rawBase === "/" ? "" : rawBase.replace(/\/$/, "");
@@ -68,7 +69,7 @@ function layout({ title, body, back, scripts, wide }) {
 <title>${escapeHtml(title)}</title>
 <script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
-<link rel="stylesheet" href="assets/style.css?v=27">
+<link rel="stylesheet" href="assets/style.css?v=28">
 </head>
 <body>
 ${termBarHtml()}
@@ -84,6 +85,7 @@ ${scriptTags}
 }
 
 async function main() {
+  await rm(distDir, { recursive: true, force: true });
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
@@ -118,54 +120,49 @@ async function main() {
   await mkdir(join(distDir, "assets", "bad-apple"), { recursive: true });
   await cp(join(root, "assets", "bad-apple"), join(distDir, "assets", "bad-apple"), { recursive: true });
 
-  const files = (await readdir(postsDir)).filter((f) => f.endsWith(".md")).sort();
+  const seriesList = await loadContent(contentDir);
   const posts = [];
 
-  for (const file of files) {
-    const stem = file.replace(/\.md$/, "");
-    const md = await readFile(join(postsDir, file), "utf8");
-    const title = extractTitle(md, stem);
-    let meta = { tags: [] };
-    try {
-      const rawMeta = await readFile(join(postsDir, stem + ".json"), "utf8");
-      meta = JSON.parse(rawMeta);
-    } catch (err) {
-      if (!err || err.code !== "ENOENT") throw err;
-    }
-    const tags = Array.isArray(meta.tags)
-      ? meta.tags.map((x) => String(x)).filter(Boolean)
-      : [];
-    const key = sortKey(stem, title);
-    let htmlBody = marked.parse(md);
-    htmlBody = htmlBody.replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
-    const outline = [];
-    htmlBody = htmlBody.replace(/<h([23])>([\s\S]*?)<\/h\1>/gi, (_m, lv, inner) => {
-      const id = "s" + (outline.length + 1);
-      outline.push({ id, level: Number(lv), text: inner.replace(/<[^>]+>/g, "").trim() });
-      return `<h${lv} id="${id}">${inner}</h${lv}>`;
+  for (const [si, s] of seriesList.entries()) {
+    s.posts = s.posts.map((src, pi) => {
+      const { stem, md, meta } = src;
+      const title = extractTitle(md, src.name);
+      const tags = Array.isArray(meta.tags)
+        ? meta.tags.map((x) => String(x)).filter(Boolean)
+        : [];
+      let htmlBody = marked.parse(md);
+      htmlBody = htmlBody.replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*/i, "");
+      const outline = [];
+      htmlBody = htmlBody.replace(/<h([23])>([\s\S]*?)<\/h\1>/gi, (_m, lv, inner) => {
+        const id = "s" + (outline.length + 1);
+        outline.push({ id, level: Number(lv), text: inner.replace(/<[^>]+>/g, "").trim() });
+        return `<h${lv} id="${id}">${inner}</h${lv}>`;
+      });
+      const plain = md.replace(/```[\s\S]*?```/g, " ");
+      const cjk = (plain.match(/[\u3400-\u9fff]/g) || []).length;
+      const words = (plain.replace(/[\u3400-\u9fff]/g, " ").match(/[A-Za-z0-9'’-]+/g) || []).length;
+      const minutes = Math.max(1, Math.round(cjk / 400 + words / 220));
+      const post = {
+        stem, title, outName: stem + ".html", htmlBody, tags, meta, outline, minutes,
+        series: s, seriesIndex: si, index: pi,
+      };
+      posts.push(post);
+      return post;
     });
-    const plain = md.replace(/```[\s\S]*?```/g, " ");
-    const cjk = (plain.match(/[\u3400-\u9fff]/g) || []).length;
-    const words = (plain.replace(/[\u3400-\u9fff]/g, " ").match(/[A-Za-z0-9'’-]+/g) || []).length;
-    const minutes = Math.max(1, Math.round(cjk / 400 + words / 220));
-    const outName = stem + ".html";
-    // Keep full meta for future fields; index still exposes tags.
-    posts.push({ stem, title, key, outName, htmlBody, tags, meta, outline, minutes });
   }
-
-  posts.sort((a, b) => a.key - b.key || a.stem.localeCompare(b.stem));
 
   const postsIndex = posts.map((p) => ({
     title: p.title,
     stem: p.stem,
+    series: p.series.title,
     href: `posts/${p.outName}`,
     tags: p.tags,
   }));
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=27"></script>
-<script src="assets/reader.js?v=27" defer></script>`;
+<script type="module" src="assets/terminal.js?v=28"></script>
+<script src="assets/reader.js?v=28" defer></script>`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}
@@ -191,15 +188,23 @@ async function main() {
   );
 
   const railHtml = (activeStem) =>
-    posts
-      .map((q, i) => {
-        const n = String(i + 1).padStart(2, "0");
-        const cls = q.stem === activeStem ? ' class="active"' : "";
-        return `<a${cls} href="posts/${q.outName}"><span class="rail-number">${n}</span><span>${escapeHtml(q.title)}</span></a>`;
+    seriesList
+      .map((s) => {
+        const links = s.posts
+          .map((q, i) => {
+            const n = String(i + 1).padStart(2, "0");
+            const cls = q.stem === activeStem ? ' class="active"' : "";
+            return `<a${cls} href="posts/${q.outName}"><span class="rail-number">${n}</span><span>${escapeHtml(q.title)}</span></a>`;
+          })
+          .join("\n");
+        const open = s.posts.some((q) => q.stem === activeStem);
+        return `<div class="series-group${open ? " current" : ""}"><div class="series-title">${escapeHtml(s.title)}</div>\n${links}</div>`;
       })
       .join("\n");
 
-  for (const [idx, post] of posts.entries()) {
+  for (const post of posts) {
+    const idx = post.index;
+    const sp = post.series.posts;
     const n = String(idx + 1).padStart(2, "0");
     const tagsHtml = post.tags.length
       ? `<p class="tags">${post.tags.map((tg) => `<span class="tag">@${escapeHtml(tg)}</span>`).join(" ")}</p>`
@@ -209,8 +214,8 @@ async function main() {
           .map((o) => `<a href="#${o.id}"${o.level === 3 ? ' class="subsection"' : ""}>${escapeHtml(o.text)}</a>`)
           .join("\n")
       : "";
-    const prev = posts[idx - 1];
-    const next = posts[idx + 1];
+    const prev = sp[idx - 1];
+    const next = sp[idx + 1];
     const pager = `<nav class="pager">${
       prev ? `<a class="prev" href="posts/${prev.outName}"><small>上一篇</small><span>${escapeHtml(prev.title)}</span></a>` : "<span></span>"
     }${
@@ -220,14 +225,13 @@ async function main() {
 <div class="reader-grid">
   <aside class="chapter-rail">
     <a class="back-to-book" href="${href("")}">← 全部文章</a>
-    <div class="rail-label">文章</div>
-    <nav class="chapter-navigation">
+        <nav class="chapter-navigation">
 ${railHtml(post.stem)}
     </nav>
-    <div class="rail-bottom"><a href="${href("posts/00-help.html")}">命令说明 /help</a></div>
+    <div class="rail-bottom"><a href="${href("posts/00-help/help.html")}">命令说明 /help</a></div>
   </aside>
   <main class="reading-main">
-    <div class="reader-topline"><a href="${href("")}">首页</a><span>/</span><span>${n}</span><span class="reading-time">约 ${post.minutes} 分钟阅读</span></div>
+    <div class="reader-topline"><a href="${href("")}">首页</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">约 ${post.minutes} 分钟阅读</span></div>
     <header class="chapter-heading">
       <p class="eyebrow"><span class="chapter-badge">${n}</span>${escapeHtml(post.stem)}.md</p>
       <h1>${escapeHtml(post.title)}</h1>
@@ -244,7 +248,9 @@ ${railHtml(post.stem)}
   </aside>
 </div>`;
     const page = layout({ title: post.title, body, back: false, scripts, wide: true });
-    await writeFile(join(distDir, "posts", post.outName), page);
+    const outPath = join(distDir, "posts", post.outName);
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, page);
   }
 
   await writeFile(
@@ -252,13 +258,20 @@ ${railHtml(post.stem)}
     JSON.stringify({ base: BASE, posts: postsIndex }, null, 2) + "\n"
   );
 
-  const items = posts
-    .map((p, i) => {
-      const n = String(i + 1).padStart(2, "0");
-      const tagBits = p.tags.length
-        ? ` <span class="menu-tags">${p.tags.map((t) => "@" + escapeHtml(t)).join(" ")}</span>`
-        : "";
-      return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a>${tagBits}</li>`;
+  const seriesHtml = seriesList
+    .map((s, si) => {
+      const sn = String(si + 1).padStart(2, "0");
+      const items = s.posts
+        .map((p, i) => {
+          const n = String(i + 1).padStart(2, "0");
+          const tagBits = p.tags.length
+            ? ` <span class="menu-tags">${p.tags.map((tg) => "@" + escapeHtml(tg)).join(" ")}</span>`
+            : "";
+          return `<li><span class="idx">${n}</span><a href="posts/${p.outName}"><span class="title">${escapeHtml(p.title)}</span></a>${tagBits}</li>`;
+        })
+        .join("\n");
+      const desc = s.description ? `<p class="series-desc">${escapeHtml(s.description)}</p>` : "";
+      return `<section class="series"><h2 class="series-head"><span class="series-no">${sn}</span>${escapeHtml(s.title)}<span class="series-count">${s.posts.length}</span></h2>${desc}<ul class="menu">${items}</ul></section>`;
     })
     .join("\n");
 
@@ -271,10 +284,10 @@ ${railHtml(post.stem)}
   const indexBody = `<div class="wrap home">
 <section class="hero">
   <pre class="banner" role="img" aria-label="Welcome!">${banner}</pre>
-  <p class="hero-sub">终端式的静态博客。顶部命令栏输入 <code>/goto</code> 跳转，<code>/about</code> 语义搜索，<code>/theme</code> 切换主题；不记得命令就看 <a href="posts/00-help.html">/help → 命令说明</a>。</p>
+  <p class="hero-sub">终端式的静态博客。顶部命令栏输入 <code>/goto</code> 跳转，<code>/about</code> 语义搜索，<code>/theme</code> 切换主题；不记得命令就看 <a href="posts/00-help/help.html">/help → 命令说明</a>。</p>
 </section>
-<div class="rail-label">全部文章 · ${posts.length}</div>
-<ul class="menu">${items}</ul>
+<div class="rail-label">全部内容 · ${seriesList.length} 个系列 · ${posts.length} 篇</div>
+${seriesHtml}
 <p class="footer">note // tui</p>
 </div>`;
 
@@ -282,7 +295,7 @@ ${railHtml(post.stem)}
     join(distDir, "index.html"),
     layout({ title: "note", body: indexBody, back: false, scripts, wide: true })
   );
-  console.log(`Built ${posts.length} posts -> dist/ (BASE_PATH=${BASE || "(root)"})`);
+  console.log(`Built ${seriesList.length} series / ${posts.length} posts -> dist/ (BASE_PATH=${BASE || "(root)"})`);
 }
 
 main().catch((err) => {

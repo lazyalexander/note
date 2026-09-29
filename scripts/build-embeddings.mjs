@@ -5,12 +5,13 @@
  */
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
+import { loadContent } from "../src/content.mjs";
 import { fileURLToPath } from "node:url";
 import { pipeline } from "@xenova/transformers";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const postsDir = join(root, "posts");
+const contentDir = join(root, "content");
 const outDir = join(root, "assets");
 const outFile = join(outDir, "embeddings.json");
 const CHUNK = 1400;
@@ -65,12 +66,11 @@ async function main() {
   );
   console.log(`Model ready in ${Date.now() - t0}ms`);
 
-  const files = (await readdir(postsDir)).filter((f) => f.endsWith(".md")).sort();
+  const all = (await loadContent(contentDir)).flatMap((s) => s.posts);
   const docs = [];
-  for (const file of files) {
-    const stem = file.replace(/\.md$/, "");
-    const md = await readFile(join(postsDir, file), "utf8");
-    const title = extractTitle(md, stem);
+  for (const src of all) {
+    const { stem, md } = src;
+    const title = extractTitle(md, src.name);
     const tags = [];
     const body = stripMd(md);
     const tagLine = tags.length ? tags.map((t) => "@" + t).join(" ") : "";

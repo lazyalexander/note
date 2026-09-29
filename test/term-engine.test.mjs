@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   parseLine,
-  filterPostsForGoto,
   createTermEngine,
   tagAtomMatches,
   scrubInvisible,
@@ -12,77 +11,55 @@ import {
 } from "../src/term-engine.mjs";
 
 const posts = [
-  {
-    title: "命令说明",
-    stem: "00-help",
-    href: "posts/00-help.html",
-    tags: ["help", "meta", "说明"],
-  },
-  {
-    title: "How to write",
-    stem: "02-how-to-write",
-    href: "posts/02-how-to-write.html",
-    tags: ["guide", "meta"],
-  },
-  {
-    title: "TUI Notes",
-    stem: "03-tui-notes",
-    href: "posts/03-tui-notes.html",
-    tags: ["tui", "design"],
-  },
+  { title: "命令说明", stem: "00-help/help", href: "posts/00-help/help.html", tags: ["help", "meta", "说明"] },
+  { title: "How to write", stem: "01-blog/01-how-to-write", href: "posts/01-blog/01-how-to-write.html", tags: ["guide", "meta"] },
 ];
 
-test("parseLine has goto but not tag command", () => {
+test("parseLine: /tag replaces /goto", () => {
   assert.equal(parseLine("/help").kind, "help");
-  assert.deepEqual(parseLine("/goto wel"), { kind: "goto", query: "wel" });
+  assert.deepEqual(parseLine("/tag poe/ 乌鸦"), { kind: "tag", query: "poe/ 乌鸦" });
+  assert.deepEqual(parseLine("tag #js"), { kind: "tag", query: "#js" });
+  assert.deepEqual(parseLine("/tag"), { kind: "tag", query: null });
+  assert.equal(parseLine("/goto x").kind, "echo");
   assert.deepEqual(parseLine("/about heart"), { kind: "about", query: "heart" });
-  assert.equal(parseLine("/tag meta").kind, "echo");
+  assert.equal(parseLine("/clear").kind, "clear");
   assert.equal(parseLine("clear").kind, "clear");
 });
 
-test("/goto matches title stem or tag (meta)", () => {
-  const hits = filterPostsForGoto(posts, "meta");
-  assert.equal(hits.length, 2);
-  assert.ok(hits.every((p) => p.tags.includes("meta")));
-  const tui = filterPostsForGoto(posts, "tui");
-  assert.equal(tui.length, 1);
-  assert.equal(tui[0].stem, "03-tui-notes");
-});
-
-test("/goto empty query lists nothing", () => {
-  assert.deepEqual(filterPostsForGoto(posts, ""), []);
-  assert.deepEqual(filterPostsForGoto(posts, "   "), []);
-});
-
-test("submit /goto miss opens egg", () => {
+test("submit /tag → search action with encoded URL; errors are friendly", () => {
   const eng = createTermEngine({ posts });
-  const r = eng.submit("/goto definitely-not-a-post-xyz");
+  const r = eng.submit("/tag poe/ & (乌鸦 | 死亡)");
+  assert.equal(r.type, "search");
+  assert.equal(r.href, "search.html?q=" + encodeURIComponent("poe/ & (乌鸦 | 死亡)"));
+  const bad = eng.submit("/tag (a | b");
+  assert.equal(bad.type, "echo");
+  assert.equal(bad.err, true);
+  assert.match(bad.message, /col 1/);
+  assert.equal(eng.submit("/tag").type, "echo");
+  assert.equal(eng.submit("/goto foo").type, "echo");
+});
+
+test("/lost opens egg; unknown command echoes", () => {
+  const eng = createTermEngine({ posts });
+  const r = eng.submit("/lost");
   assert.equal(r.type, "navigate");
-  assert.equal(r.egg, true);
   assert.equal(r.post.href, EGG_HREF);
+  assert.equal(eng.submit("/nope").type, "echo");
 });
 
-test("submit /goto meta navigates to a meta post", () => {
-  const eng = createTermEngine({ posts });
-  const live = eng.suggest("/goto meta");
-  assert.equal(live.matches.length, 2);
-  const r = eng.submit("/goto meta", 0);
-  assert.equal(r.type, "navigate");
-  assert.ok(r.post.tags.includes("meta"));
-});
-
-test("IME scrub still applied for goto", () => {
-  const hits = filterPostsForGoto(posts, "meta\u200b");
-  assert.equal(hits.length, 2);
+test("IME scrub helpers", () => {
   assert.equal(scrubInvisible("ｍｅｔａ"), "meta");
   assert.equal(normalizeTag("@Meta\u200b"), "meta");
   assert.equal(codepointsHex("meta\u200b"), "6d 65 74 61 200b");
   assert.equal(tagAtomMatches("meta", "me"), true);
+  // zero-width junk inside a /tag expression is ignored
+  const eng = createTermEngine({ posts });
+  assert.equal(eng.submit("/tag me\u200bta").type, "search");
 });
 
 test("navigating lock + help", () => {
   const eng = createTermEngine({ posts });
-  assert.equal(eng.submit("/help").post.stem, "00-help");
+  assert.equal(eng.submit("/help").post.stem, "00-help/help");
   assert.equal(eng.submit("/welcome").type, "echo");
   assert.equal(eng.beginNavigate(), true);
   assert.equal(eng.beginNavigate(), false);
@@ -90,17 +67,16 @@ test("navigating lock + help", () => {
   assert.equal(eng.beginNavigate(), true);
 });
 
-test("chinese tag via goto", () => {
-  const hits = filterPostsForGoto(posts, "说");
-  assert.equal(hits.length, 1);
-  assert.equal(hits[0].stem, "00-help");
-});
-
-test("/theme parses and returns theme action", async () => {
-  const { createTermEngine } = await import("../src/term-engine.mjs");
+test("/theme parses and returns theme action", () => {
   const e = createTermEngine({ posts: [] });
   assert.deepEqual(e.submit("/theme paper"), { type: "theme", name: "paper" });
   assert.deepEqual(e.submit("/theme auto"), { type: "theme", name: "auto" });
   assert.equal(e.submit("/theme nope").type, "echo");
   assert.equal(e.submit("/theme").type, "echo");
+});
+
+test("/about needs a query", () => {
+  const e = createTermEngine({ posts: [] });
+  assert.equal(e.submit("/about").type, "echo");
+  assert.deepEqual(e.submit("/about black cat"), { type: "about", query: "black cat" });
 });

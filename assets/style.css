@@ -714,3 +714,153 @@ article.post a:hover { color: var(--eva-green); text-decoration-color: var(--eva
 .folder { border-bottom-color: var(--border); }
 .folder:hover { background: var(--bg-elev); border-color: var(--eva-green); }
 .folder-icon { color: var(--eva-blue); }
+
+/* =====================================================================
+   v36 — hidden command bar, statusline, overlays, flash, which-key, search page
+   ===================================================================== */
+:root { --sl-h: 1.9rem; }
+
+/* command bar: hidden overlay that slides in from the top (no layout space) */
+.term-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: auto; z-index: 90;
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 10px 30px var(--shadow);
+  transform: translateY(-115%); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform .16s ease, opacity .12s ease, visibility 0s linear .16s;
+}
+.term-bar.open { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform .16s ease, opacity .12s ease; }
+.term-bar-inner { display: block; height: auto; max-width: 44rem; padding: 0.7rem 1rem; }
+.term-bar .term { max-width: none; }
+.term-bar .term-line { height: 2.4rem; }
+.term-bar .term-line:hover { border-color: var(--comment); }
+.term-bar .term-line { border-color: var(--eva-green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--eva-green) 18%, transparent); }
+.term-field { position: relative; flex: 1; min-width: 0; display: block; height: 1.6em; }
+.term-field .term-input { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; background: transparent; }
+.term-ghost { position: absolute; inset: 0; z-index: 0; white-space: pre; overflow: hidden; pointer-events: none;
+  font: inherit; font-size: 0.95rem; font-family: Consolas, Menlo, "Sarasa Mono SC", "Noto Sans Mono CJK SC", monospace; line-height: 1.6em; }
+.term-ghost-typed { visibility: hidden; }
+.term-ghost-rest { color: var(--comment); opacity: 0.75; }
+.term-bar .term-input { line-height: 1.6em; }
+.term-kbd { display: inline-block !important; }
+.term-line:focus-within .term-kbd { display: inline-block !important; }
+.term-bar .term-echo { white-space: pre-wrap; }
+.term-bar .term-echo:not(.err) { color: var(--fg-dim); }
+.suggest-kind { flex-shrink: 0; width: 3.4em; font-size: 0.72em; letter-spacing: 0.05em; color: var(--comment); text-transform: uppercase; }
+.suggest-kind.k-cmd { color: var(--eva-green); }
+.suggest-kind.k-folder { color: var(--eva-purple); }
+.suggest-kind.k-tag { color: var(--eva-orange); }
+.suggest-kind.k-post { color: var(--eva-blue); }
+.suggest-item.ghosted { background: color-mix(in srgb, var(--sel) 45%, transparent); }
+.suggest-item .suggest-stem { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* reader rails no longer sit under a sticky header */
+:root { --bar-h: 0rem; }
+.chapter-rail, .outline-rail { top: 0; max-height: calc(100dvh - var(--sl-h)); }
+.chapter-rail { height: calc(100dvh - var(--sl-h)); }
+.prose h2, .prose h3, .prose h4 { scroll-margin-top: 1.75rem; }
+body { padding-bottom: var(--sl-h); }
+.reading-progress { z-index: 95; }
+
+/* statusline (fixed, minimal) */
+.statusline {
+  position: fixed; left: 0; right: 0; bottom: 0; height: var(--sl-h); z-index: 80;
+  display: flex; align-items: center; gap: 0.75rem; padding: 0 0.6rem 0 0;
+  background: var(--bg-elev); border-top: 1px solid var(--border);
+  font: 0.72rem/1 Consolas, Menlo, "Sarasa Mono SC", "Noto Sans Mono CJK SC", monospace; color: var(--comment);
+}
+.sl-mode { align-self: stretch; display: inline-flex; align-items: center; padding: 0 0.8rem; font-weight: 700; letter-spacing: 0.08em;
+  background: var(--eva-green); color: #10001f; min-width: 6.6rem; justify-content: center; }
+.sl-mode[data-mode="COMMAND"] { background: var(--eva-orange); }
+.sl-mode[data-mode="LEADER"] { background: var(--eva-purple); color: #fff; }
+.sl-mode[data-mode="FLASH"] { background: #ff3d8b; color: #fff; }
+.sl-mode[data-mode="PICK"], .sl-mode[data-mode="HELP"] { background: var(--eva-blue); color: #04121f; }
+:root[data-theme="paper"] .sl-mode { color: #fff; }
+:root[data-theme="paper"] .sl-mode[data-mode="NORMAL"] { background: #3f8a00; }
+.sl-brand { color: var(--fg-dim); }
+.sl-brand:hover { color: var(--eva-green); text-decoration: none; }
+.sl-pending { min-width: 2.2rem; color: var(--eva-orange); font-weight: 700; }
+.sl-msg { color: var(--fg-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sl-msg.err { color: var(--eva-orange); }
+.sl-spacer { flex: 1; }
+.statusline .theme-toggle { height: 1.3rem; width: 1.6rem; font-size: 0.85rem; padding: 0; }
+.sl-btn { background: none; border: none; font: inherit; color: var(--comment); cursor: pointer; padding: 0.2rem 0.3rem; border-radius: 3px; }
+.sl-btn:hover { color: var(--eva-green); }
+.statusline kbd, .help-box kbd, .picker-foot kbd, .wk-item kbd, .hero-sub kbd, .sr-empty kbd {
+  font: inherit; font-size: 0.85em; padding: 0.1em 0.4em; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); color: var(--fg-dim);
+}
+@media (max-width: 760px) { .sl-brand, .sl-pending { display: none; } .sl-mode { min-width: 4.8rem; padding: 0 0.5rem; } }
+
+/* overlays: picker + help */
+.overlay { position: fixed; inset: 0; z-index: 100; background: color-mix(in srgb, var(--bg) 62%, transparent); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: flex-start; padding: 12vh 1rem 1rem; }
+.picker-box, .help-box { width: min(38rem, 100%); background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 60px var(--shadow); overflow: hidden; }
+.picker-title { padding: 0.55rem 0.9rem; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--eva-orange); border-bottom: 1px solid var(--border); }
+.picker-input { display: block; width: 100%; padding: 0.7rem 0.9rem; background: var(--bg); border: none; border-bottom: 1px solid var(--border); outline: none; color: var(--fg); font: 0.95rem Consolas, Menlo, "Sarasa Mono SC", "Noto Sans Mono CJK SC", monospace; caret-color: var(--eva-green); }
+.picker-list { list-style: none; margin: 0; padding: 0.25rem 0; max-height: 50vh; overflow-y: auto; }
+.picker-item { display: flex; gap: 0.6rem; align-items: baseline; padding: 0.38rem 0.9rem; cursor: pointer; border-left: 2px solid transparent; }
+.picker-item.active { background: var(--sel); border-left-color: var(--eva-green); }
+.picker-item.active .pi-label { color: var(--eva-green); }
+.pi-marker { color: var(--eva-purple); width: 1ch; font-weight: 700; }
+.pi-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi-hint { color: var(--comment); font-size: 0.78rem; flex-shrink: 0; }
+.picker-empty { padding: 0.6rem 0.9rem; color: var(--comment); }
+.picker-foot { display: flex; gap: 1.2rem; padding: 0.45rem 0.9rem; border-top: 1px solid var(--border); color: var(--comment); font-size: 0.72rem; }
+.help-box { width: min(52rem, 100%); max-height: 78vh; overflow-y: auto; }
+.help-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.4rem 1.6rem; padding: 0.8rem 1rem 1rem; }
+.help-cols h3 { margin: 0.6rem 0 0.35rem; font-size: 0.78rem; letter-spacing: 0.06em; color: var(--eva-purple); }
+.help-cols dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 0.9rem; font-size: 0.82rem; align-items: baseline; }
+.help-cols dt { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.help-cols dd { margin: 0; color: var(--fg-dim); }
+
+/* which-key popup */
+.whichkey { position: fixed; left: 0.6rem; right: 0.6rem; bottom: calc(var(--sl-h) + 0.5rem); z-index: 85; max-width: 46rem; margin: 0 auto; background: var(--bg-elev); border: 1px solid var(--eva-purple); border-radius: 8px; box-shadow: 0 12px 40px var(--shadow); padding: 0.6rem 0.9rem 0.8rem; font: 0.82rem/1.4 Consolas, Menlo, "Sarasa Mono SC", monospace; }
+.wk-title { color: var(--eva-purple); font-weight: 700; margin-bottom: 0.45rem; }
+.wk-title span { color: var(--comment); font-weight: 400; }
+.wk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: 0.25rem 1.2rem; }
+.wk-item { display: flex; align-items: baseline; gap: 0.5rem; }
+.wk-item kbd { color: var(--eva-green); border-color: var(--eva-green); min-width: 1.6em; text-align: center; }
+.wk-arrow { color: var(--comment); }
+
+/* flash labels */
+.flash-layer { position: fixed; inset: 0; z-index: 88; pointer-events: none; }
+.flash-label { position: fixed; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 4px; background: var(--eva-green); color: #10001f; font: 700 0.8rem/1 Consolas, Menlo, monospace; text-transform: lowercase;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--eva-green) 70%, transparent), 0 2px 6px var(--shadow); }
+:root[data-theme="paper"] .flash-label { background: #3f8a00; color: #fff; }
+
+/* list cursor (home + search) */
+.nav-cursor.folder, .sr-item.nav-cursor { background: var(--bg-elev); box-shadow: inset 3px 0 0 var(--eva-green); }
+.folder.nav-cursor .folder-name { color: var(--eva-green); }
+.hero-sub kbd { font-size: 0.78em; }
+
+/* home: command hint spacing (bar is hidden, so the page no longer needs a header offset) */
+.home .hero { padding-top: 2.5rem; }
+
+/* search result page */
+.sr-head { padding: 2.2rem 0 1rem; }
+.sr-prompt { margin: 0; font: 1.05rem/1.5 Consolas, Menlo, "Sarasa Mono SC", monospace; overflow-wrap: anywhere; }
+.sr-dollar { color: var(--eva-green); font-weight: 700; }
+.sr-cmd { color: var(--eva-orange); }
+.sr-expr { color: var(--fg); }
+.sr-summary { margin: 0.4rem 0 0; color: var(--comment); font-size: 0.85rem; }
+.sr-list { margin-top: 0.25rem; gap: 1.2rem; border-top: none; }
+.sr-group { list-style: none; }
+.sr-folder { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.5rem 0.25rem; border-top: 1px solid var(--eva-purple-dim); border-bottom: 1px solid var(--border); }
+.sr-folder-name { font-weight: 700; font-size: 1.05rem; color: var(--eva-purple); }
+.sr-folder-dir { font: 0.8rem Consolas, Menlo, monospace; color: var(--comment); }
+.sr-folder-count { margin-left: auto; color: var(--eva-orange); font-size: 0.8rem; white-space: nowrap; }
+.sr-items { list-style: none; margin: 0; padding: 0; }
+.sr-item { display: flex; gap: 0.9rem; padding: 0.85rem 0.25rem; border-bottom: 1px solid var(--border); color: var(--fg); }
+.sr-item:hover { background: var(--bg-elev); text-decoration: none; color: var(--fg); }
+.sr-num { color: var(--comment); font: 0.85rem/1.9 Consolas, Menlo, monospace; min-width: 1.6rem; }
+.sr-body { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; flex: 1; }
+.sr-title { font-weight: 650; color: var(--fg); }
+.sr-item:hover .sr-title, .sr-item.nav-cursor .sr-title { color: var(--eva-green); }
+.sr-snippet { color: var(--fg-dim); font-size: 0.86rem; line-height: 1.6; overflow-wrap: anywhere; }
+.sr-snippet mark, .sr-title mark { background: color-mix(in srgb, var(--eva-orange) 30%, transparent); color: var(--eva-orange); border-radius: 2px; padding: 0 0.1em; font-weight: 700; }
+:root[data-theme="paper"] .sr-snippet mark, :root[data-theme="paper"] .sr-title mark { background: #ffe6b8; color: #7a3d00; }
+.sr-tags { display: flex; gap: 0.6rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--comment); }
+.sr-tag.hit { color: var(--eva-green); font-weight: 700; }
+.sr-empty { padding: 1.6rem 0.25rem; color: var(--fg-dim); border-top: 1px solid var(--border); }
+.sr-empty code { color: var(--eva-orange); background: none; }
+.sr-err pre { margin: 0 0 0.8rem; color: var(--eva-orange); font: 0.9rem/1.5 Consolas, Menlo, "Sarasa Mono SC", monospace; white-space: pre-wrap; }

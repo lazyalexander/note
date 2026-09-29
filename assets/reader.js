@@ -7,12 +7,12 @@
   var hdr = document.querySelector(".term-bar");
   var main = document.querySelector(".reading-main");
   var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var GAP = 12;               // where a clicked heading rests, below the top bar
+  var GAP = 28;               // where a clicked heading rests, measured from the top of the viewport (the command bar is a hidden overlay)
   var current = -2;           // index currently marked
   var clicking = false;       // a click-initiated scroll is in flight: only the clicked item may be active
   var hovering = false, railTimer = 0, hashTimer = 0, settleTimer = 0;
 
-  function headerH() { return hdr ? hdr.getBoundingClientRect().height : 56; }
+  function headerH() { return 0; }  // command bar no longer takes layout space
   function maxScroll() { return document.documentElement.scrollHeight - window.innerHeight; }
 
   // Short pages cannot scroll far enough to bring the last headings to the top, so the
@@ -153,6 +153,12 @@
   if (location.hash.length > 1) {
     setTimeout(function () { goTo(decodeURIComponent(location.hash.slice(1)), false); }, 60);
   } else spy();
+  // keyboard navigation (nav.js) reuses the exact click behaviour
+  window.__reader = {
+    goTo: function (id) { goTo(id, false); },
+    restY: function () { return headerH() + GAP; },
+    heads: heads
+  };
   var top = document.querySelector(".back-to-top");
   if (top) top.addEventListener("click", function (e) { e.preventDefault(); userScroll(); window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }); });
   setInterval(function () { if (window.__applyTheme) window.__applyTheme(); }, 300000);

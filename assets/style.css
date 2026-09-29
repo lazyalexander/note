@@ -19,7 +19,55 @@
   --green-term: var(--green);
   --amber: var(--yellow);
   --dim: var(--comment);
+  --shadow: rgba(0, 0, 0, 0.4);
+  --ba-bg: #0d0f18;
+  --read-serif: "Newsreader", Georgia, "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif;
+  --read-sans: "Manrope", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
 }
+
+/* Reading themes (warm paper / soft charcoal) */
+:root[data-theme="paper"] {
+  --bg: #fcfcf9; --bg-elev: #f2f3ed; --bg-hl: #e8eadf;
+  --fg: #20231e; --fg-dim: #43483e; --comment: #62675d;
+  --blue: #243d66; --cyan: #248f7e; --green: #5f7a1f; --magenta: #6f5fc0;
+  --red: #b0405a; --orange: #b87a38; --yellow: #8a6a1f;
+  --border: #dedfd7; --code: #f2f3ed; --sel: #e6f0b8;
+  --shadow: rgba(32, 35, 30, 0.08); --ba-bg: #f2f3ed;
+}
+:root[data-theme="ink"] {
+  --bg: #18191c; --bg-elev: #222429; --bg-hl: #2c2f36;
+  --fg: #eeeef0; --fg-dim: #cfd0d6; --comment: #aaadb6;
+  --blue: #aac7ff; --cyan: #91bcff; --green: #d8ed7a; --magenta: #bdb0ff;
+  --red: #f0929f; --orange: #efbd7f; --yellow: #efbd7f;
+  --border: #383b43; --code: #222429; --sel: #304363;
+  --shadow: rgba(0, 0, 0, 0.3); --ba-bg: #222429;
+}
+:root[data-theme="paper"] body,
+:root[data-theme="ink"] body { transition: background 0.15s, color 0.15s; }
+:root[data-theme="paper"] .term-bar,
+:root[data-theme="ink"] .term-bar { box-shadow: none; }
+:root[data-theme="paper"] .term-bar .suggest,
+:root[data-theme="ink"] .term-bar .suggest { box-shadow: 0 8px 20px var(--shadow); }
+:root[data-theme="paper"] article.post,
+:root[data-theme="ink"] article.post {
+  font-family: var(--read-serif);
+  font-size: 1.0625rem;
+  line-height: 1.85;
+}
+:root[data-theme="paper"] article.post h1,
+:root[data-theme="paper"] article.post h2,
+:root[data-theme="paper"] article.post h3,
+:root[data-theme="ink"] article.post h1,
+:root[data-theme="ink"] article.post h2,
+:root[data-theme="ink"] article.post h3 { font-family: var(--read-sans); letter-spacing: -0.01em; }
+:root[data-theme="paper"] .box-title::before,
+:root[data-theme="ink"] .box-title::before { content: ""; }
+:root[data-theme="paper"] .box,
+:root[data-theme="ink"] .box { border-radius: 6px; }
+:root[data-theme="paper"] article.post code,
+:root[data-theme="ink"] article.post code,
+:root[data-theme="paper"] article.post pre,
+:root[data-theme="ink"] article.post pre { font-family: Consolas, Menlo, "Sarasa Mono SC", monospace; }
 
 * { box-sizing: border-box; }
 
@@ -42,7 +90,7 @@ a:hover { color: var(--blue); text-decoration: underline; }
   z-index: 50;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px var(--shadow);
   overflow: visible;
 }
 .term-bar-inner {
@@ -58,7 +106,7 @@ a:hover { color: var(--blue); text-decoration: underline; }
   right: 0;
   top: calc(100% + 2px);
   z-index: 60;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 28px var(--shadow);
 }
 .term-bar .suggest {
   background: var(--bg);
@@ -287,7 +335,7 @@ article.post a:hover { color: var(--blue); }
 .egg-source{max-height:28rem;overflow:auto;font-size:0.75rem;line-height:1.35;background:var(--code);border:1px solid var(--border);padding:0.85rem 1rem;color:var(--fg)}
 .egg-source code{background:none;border:none;padding:0;color:inherit;font-size:inherit;white-space:pre}
 
-.ba-wrap{position:relative;background:#0d0f18;border:1px solid var(--border);padding:0.75rem;min-height:12rem}
+.ba-wrap{position:relative;background:var(--ba-bg);border:1px solid var(--border);padding:0.75rem;min-height:12rem}
 #ascii-display{margin:0;white-space:pre;line-height:1.05;color:var(--fg);font-family:Consolas,Menlo,monospace;overflow:auto;max-height:60vh;text-align:left}
 #play-button{font:inherit;padding:0.45rem 1rem;cursor:pointer;background:var(--blue);color:var(--bg);border:none;border-radius:4px;margin:0.5rem 0}
 #play-button:disabled{opacity:0.5;cursor:default}
@@ -296,7 +344,7 @@ article.post a:hover { color: var(--blue); }
 
 .suggest-score {
   margin-left: 0.5rem;
-  color: #7aa2f7;
+  color: var(--blue);
   font-variant-numeric: tabular-nums;
   opacity: 0.9;
 }

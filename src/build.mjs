@@ -59,7 +59,8 @@ function layout({ title, body, back, scripts }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <base href="${baseHref}">
 <title>${escapeHtml(title)}</title>
-<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("note-theme");if(t&&t!=="tokyo")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<link rel="stylesheet" href="assets/style.css?v=25">
 </head>
 <body>
 ${termBarHtml()}
@@ -149,7 +150,7 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=24"></script>`;
+<script type="module" src="assets/terminal.js?v=25"></script>`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}

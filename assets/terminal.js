@@ -1,4 +1,4 @@
-import { createTermEngine } from "./term-engine.js?v=24";
+import { createTermEngine } from "./term-engine.js?v=25";
 
 (function () {
   "use strict";
@@ -125,7 +125,7 @@ import { createTermEngine } from "./term-engine.js?v=24";
     renderSuggest();
     setEcho("about: searching…");
     try {
-      const mod = await import("./about-search.js?v=24");
+      const mod = await import("./about-search.js?v=25");
       const result = await mod.aboutSearch(query, 5, function (msg) {
         setEcho("about: " + msg);
       });
@@ -179,6 +179,15 @@ import { createTermEngine } from "./term-engine.js?v=24";
       setEcho("");
       matches = [];
       selected = 0;
+      renderSuggest();
+      return;
+    }
+    if (action.type === "theme") {
+      try { localStorage.setItem("note-theme", action.name); } catch (e) {}
+      if (action.name === "tokyo") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", action.name);
+      input.value = "";
+      setEcho("theme · " + action.name);
       renderSuggest();
       return;
     }
@@ -334,7 +343,7 @@ import { createTermEngine } from "./term-engine.js?v=24";
 
   // Warm /about index + e5 model in the background so first /about is snappy.
   // Failures stay quiet — /about will surface errors on demand.
-  import("./about-search.js?v=24")
+  import("./about-search.js?v=25")
     .then(function (mod) {
       if (mod && typeof mod.ensureAboutReady === "function") {
         return mod.ensureAboutReady(null);

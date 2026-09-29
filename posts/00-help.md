@@ -29,6 +29,16 @@
 
 结果按相似度排序，终端回显 `load / query / total` 毫秒。
 
+## /theme
+
+切换配色，选择会记在浏览器里：
+
+```
+/theme tokyo   终端风（默认）
+/theme paper   浅色阅读
+/theme ink     深色阅读
+```
+
 ## /help
 
 打开本页。输入 `/help` 后按回车跳转。

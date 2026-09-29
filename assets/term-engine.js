@@ -75,6 +75,8 @@ export const EGG_POST = {
   tags: [],
 };
 
+export const THEMES = ["tokyo", "paper", "ink"];
+
 export function parseLine(raw) {
   const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
@@ -84,6 +86,8 @@ export function parseLine(raw) {
   m = line.match(/^\/?about(?:\s+(.*))?$/i);
   if (m) return { kind: "about", query: m[1] == null ? null : m[1] };
   if (/^clear$/i.test(line)) return { kind: "clear" };
+  m = line.match(/^\/?theme(?:\s+(.*))?$/i);
+  if (m) return { kind: "theme", name: m[1] == null ? null : m[1].trim().toLowerCase() };
   // Former /tag command — point people to /goto.
   m = line.match(/^\/?tag(?:\s+(.*))?$/i);
   if (m) {
@@ -217,6 +221,17 @@ export function createTermEngine(options = {}) {
       // Miss → easter egg page (kept on purpose).
       if (!post) return { type: "navigate", post: EGG_POST, egg: true };
       return { type: "navigate", post };
+    }
+
+    if (parsed.kind === "theme") {
+      if (!parsed.name || !THEMES.includes(parsed.name)) {
+        return {
+          type: "echo",
+          message: "usage: /theme " + THEMES.join(" | ") + "  (tokyo=terminal, paper=light reading, ink=dark reading)",
+          err: !!parsed.name,
+        };
+      }
+      return { type: "theme", name: parsed.name };
     }
 
     if (parsed.kind === "about") {

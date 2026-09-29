@@ -37,15 +37,21 @@ function href(path) {
 }
 
 function termBarHtml() {
-  return `<div class="term-bar"><div class="term-bar-inner"><div class="term">
-  <div class="term-line">
-    <label class="prompt-label" for="term-input">guest@note:<span class="cwd">~</span>$</label>
-    <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="/welcome" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
-    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换主题" title="切换主题（自动 / paper / tokyo / ink）">◐</button>
+  return `<header class="term-bar"><div class="term-bar-inner">
+  <a class="brand" href="${href("")}" aria-label="首页"><span class="brand-mark">n</span><span class="brand-name">note</span></a>
+  <div class="term">
+    <label class="term-line" for="term-input">
+      <span class="prompt-label">$</span>
+      <input class="term-input" id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus placeholder="输入命令或搜索… 试试 /goto  /about  /theme" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+      <kbd class="term-kbd" aria-hidden="true">/</kbd>
+    </label>
+    <div class="term-pop">
+      <pre class="term-echo" id="term-echo" hidden></pre>
+      <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+    </div>
   </div>
-  <ul class="suggest" id="suggest" role="listbox" hidden></ul>
-  <pre class="term-echo" id="term-echo" hidden></pre>
-</div></div></div>`;
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换主题" title="切换主题（自动 / paper / tokyo / ink）">◐</button>
+</div></header>`;
 }
 
 function layout({ title, body, back, scripts, wide }) {
@@ -62,7 +68,7 @@ function layout({ title, body, back, scripts, wide }) {
 <title>${escapeHtml(title)}</title>
 <script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
-<link rel="stylesheet" href="assets/style.css?v=26">
+<link rel="stylesheet" href="assets/style.css?v=27">
 </head>
 <body>
 ${termBarHtml()}
@@ -158,8 +164,8 @@ async function main() {
 
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const scripts = `<script>window.__POSTS__=${postsJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=26"></script>
-<script src="assets/reader.js?v=26" defer></script>`;
+<script type="module" src="assets/terminal.js?v=27"></script>
+<script src="assets/reader.js?v=27" defer></script>`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}
@@ -256,11 +262,16 @@ ${railHtml(post.stem)}
     })
     .join("\n");
 
+  const banner = String.raw`██╗    ██╗███████╗██╗      ██████╗ ██████╗ ███╗   ███╗███████╗██╗
+██║    ██║██╔════╝██║     ██╔════╝██╔═══██╗████╗ ████║██╔════╝██║
+██║ █╗ ██║█████╗  ██║     ██║     ██║   ██║██╔████╔██║█████╗  ██║
+██║███╗██║██╔══╝  ██║     ██║     ██║   ██║██║╚██╔╝██║██╔══╝  ╚═╝
+╚███╔███╔╝███████╗███████╗╚██████╗╚██████╔╝██║ ╚═╝ ██║███████╗██╗
+ ╚══╝╚══╝ ╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝`;
   const indexBody = `<div class="wrap home">
 <section class="hero">
-  <p class="eyebrow"><span class="dot"></span>个人笔记</p>
-  <h1>note.</h1>
-  <p class="hero-sub">终端式的静态博客。在上方输入 <code>/goto</code> 跳转，<code>/about</code> 语义搜索，<code>/theme</code> 切换主题。</p>
+  <pre class="banner" role="img" aria-label="Welcome!">${banner}</pre>
+  <p class="hero-sub">终端式的静态博客。顶部命令栏输入 <code>/goto</code> 跳转，<code>/about</code> 语义搜索，<code>/theme</code> 切换主题；不记得命令就看 <a href="posts/00-help.html">/help → 命令说明</a>。</p>
 </section>
 <div class="rail-label">全部文章 · ${posts.length}</div>
 <ul class="menu">${items}</ul>

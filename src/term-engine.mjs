@@ -24,7 +24,6 @@ export const THEMES = ["auto", "tokyo", "paper", "ink"];
 export function parseLine(raw) {
   const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
-  if (/^\/?welcome$/i.test(line)) return { kind: "welcome" };
   let m = line.match(/^\/?goto(?:\s+(.*))?$/i);
   if (m) return { kind: "goto", query: m[1] == null ? null : m[1] };
   m = line.match(/^\/?about(?:\s+(.*))?$/i);
@@ -85,16 +84,6 @@ export function findHelpPost(posts) {
   );
 }
 
-export function findWelcomePost(posts) {
-  return (
-    findPostByStem(posts, "01-welcome") ||
-    (Array.isArray(posts) ? posts : []).find((p) =>
-      postTags(p).some((t) => normalizeTag(t) === "welcome")
-    ) ||
-    null
-  );
-}
-
 /**
  * Create a stateful terminal engine.
  * `navigating` must be reset on pageshow (bfcache back) or goTo stays dead.
@@ -145,12 +134,6 @@ export function createTermEngine(options = {}) {
       if (!post) return { type: "echo", message: "help post not found", err: true };
       return { type: "navigate", post };
     }
-    if (parsed.kind === "welcome") {
-      const post = findWelcomePost(posts);
-      if (!post)
-        return { type: "echo", message: "welcome post not found", err: true };
-      return { type: "navigate", post };
-    }
     if (parsed.kind === "clear") return { type: "clear" };
 
     if (parsed.kind === "goto") {
@@ -199,7 +182,6 @@ export function createTermEngine(options = {}) {
     filterPostsForGoto: (q) => filterPostsForGoto(posts, q),
     filterPostsByTitle: (q) => filterPostsForGoto(posts, q),
     findHelpPost: () => findHelpPost(posts),
-    findWelcomePost: () => findWelcomePost(posts),
     isNavigating: () => navigating,
     beginNavigate() {
       if (navigating) return false;

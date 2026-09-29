@@ -19,12 +19,6 @@ const posts = [
     tags: ["help", "meta", "说明"],
   },
   {
-    title: "Welcome",
-    stem: "01-welcome",
-    href: "posts/01-welcome.html",
-    tags: ["welcome", "meta", "欢迎"],
-  },
-  {
     title: "How to write",
     stem: "02-how-to-write",
     href: "posts/02-how-to-write.html",
@@ -48,11 +42,11 @@ test("parseLine has goto but not tag command", () => {
 
 test("/goto matches title stem or tag (meta)", () => {
   const hits = filterPostsForGoto(posts, "meta");
-  assert.equal(hits.length, 3);
+  assert.equal(hits.length, 2);
   assert.ok(hits.every((p) => p.tags.includes("meta")));
-  const wel = filterPostsForGoto(posts, "wel");
-  assert.equal(wel.length, 1);
-  assert.equal(wel[0].stem, "01-welcome");
+  const tui = filterPostsForGoto(posts, "tui");
+  assert.equal(tui.length, 1);
+  assert.equal(tui[0].stem, "03-tui-notes");
 });
 
 test("/goto empty query lists nothing", () => {
@@ -71,7 +65,7 @@ test("submit /goto miss opens egg", () => {
 test("submit /goto meta navigates to a meta post", () => {
   const eng = createTermEngine({ posts });
   const live = eng.suggest("/goto meta");
-  assert.equal(live.matches.length, 3);
+  assert.equal(live.matches.length, 2);
   const r = eng.submit("/goto meta", 0);
   assert.equal(r.type, "navigate");
   assert.ok(r.post.tags.includes("meta"));
@@ -79,17 +73,17 @@ test("submit /goto meta navigates to a meta post", () => {
 
 test("IME scrub still applied for goto", () => {
   const hits = filterPostsForGoto(posts, "meta\u200b");
-  assert.equal(hits.length, 3);
+  assert.equal(hits.length, 2);
   assert.equal(scrubInvisible("ｍｅｔａ"), "meta");
   assert.equal(normalizeTag("@Meta\u200b"), "meta");
   assert.equal(codepointsHex("meta\u200b"), "6d 65 74 61 200b");
   assert.equal(tagAtomMatches("meta", "me"), true);
 });
 
-test("navigating lock + help/welcome", () => {
+test("navigating lock + help", () => {
   const eng = createTermEngine({ posts });
   assert.equal(eng.submit("/help").post.stem, "00-help");
-  assert.equal(eng.submit("/welcome").post.stem, "01-welcome");
+  assert.equal(eng.submit("/welcome").type, "echo");
   assert.equal(eng.beginNavigate(), true);
   assert.equal(eng.beginNavigate(), false);
   eng.resetNavigation();
@@ -97,9 +91,9 @@ test("navigating lock + help/welcome", () => {
 });
 
 test("chinese tag via goto", () => {
-  const hits = filterPostsForGoto(posts, "欢");
+  const hits = filterPostsForGoto(posts, "说");
   assert.equal(hits.length, 1);
-  assert.equal(hits[0].stem, "01-welcome");
+  assert.equal(hits[0].stem, "00-help");
 });
 
 test("/theme parses and returns theme action", async () => {

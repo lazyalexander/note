@@ -164,6 +164,19 @@ import { createTermEngine } from "./term-engine.js?v=25";
     }
   }
 
+  var themeBtn = document.getElementById("theme-toggle");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", function () {
+      var order = ["auto", "paper", "tokyo", "ink"];
+      var cur = "auto";
+      try { cur = localStorage.getItem("note-theme") || "auto"; } catch (e) {}
+      var nxt = order[(order.indexOf(cur) + 1) % order.length];
+      try { localStorage.setItem("note-theme", nxt); } catch (e) {}
+      if (window.__applyTheme) window.__applyTheme();
+      setEcho("theme · " + nxt);
+    });
+  }
+
   function applyAction(action) {
     if (!action) return;
     if (action.type === "navigate") {
@@ -184,8 +197,7 @@ import { createTermEngine } from "./term-engine.js?v=25";
     }
     if (action.type === "theme") {
       try { localStorage.setItem("note-theme", action.name); } catch (e) {}
-      if (action.name === "tokyo") document.documentElement.removeAttribute("data-theme");
-      else document.documentElement.setAttribute("data-theme", action.name);
+      if (window.__applyTheme) window.__applyTheme();
       input.value = "";
       setEcho("theme · " + action.name);
       renderSuggest();

@@ -106,7 +106,7 @@ test("/theme parses and returns theme action", async () => {
   const { createTermEngine } = await import("../src/term-engine.mjs");
   const e = createTermEngine({ posts: [] });
   assert.deepEqual(e.submit("/theme paper"), { type: "theme", name: "paper" });
-  assert.deepEqual(e.submit("/theme tokyo"), { type: "theme", name: "tokyo" });
+  assert.deepEqual(e.submit("/theme auto"), { type: "theme", name: "auto" });
   assert.equal(e.submit("/theme nope").type, "echo");
   assert.equal(e.submit("/theme").type, "echo");
 });

@@ -31,10 +31,11 @@
 
 ## /theme
 
-切换配色，选择会记在浏览器里：
+切换配色，选择会记在浏览器里；右上角的 ◐ 按钮可循环切换：
 
 ```
-/theme tokyo   终端风（默认）
+/theme auto    白天 paper（6–18 点），晚上 tokyo（默认）
+/theme tokyo   终端风
 /theme paper   浅色阅读
 /theme ink     深色阅读
 ```

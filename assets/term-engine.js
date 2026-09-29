@@ -75,7 +75,7 @@ export const EGG_POST = {
   tags: [],
 };
 
-export const THEMES = ["tokyo", "paper", "ink"];
+export const THEMES = ["auto", "tokyo", "paper", "ink"];
 
 export function parseLine(raw) {
   const line = scrubInvisible(raw).trim();
@@ -227,7 +227,7 @@ export function createTermEngine(options = {}) {
       if (!parsed.name || !THEMES.includes(parsed.name)) {
         return {
           type: "echo",
-          message: "usage: /theme " + THEMES.join(" | ") + "  (tokyo=terminal, paper=light reading, ink=dark reading)",
+          message: "usage: /theme " + THEMES.join(" | ") + "  (auto=白天paper/晚上tokyo)",
           err: !!parsed.name,
         };
       }

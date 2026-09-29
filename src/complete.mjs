@@ -1,6 +1,7 @@
 /**
  * Command-bar completion (pure, no DOM). Sources in priority order:
- *   command names → folders → tags → post titles → history.
+ *   command names → folders → term prefixes (tag: grep: about: …) → tags → post titles → history.
+ * /find is the search command; /tag is an alias that accepts the same expressions; /about and /grep complete their own argument.
  * complete(line, ctx) → { items, ghost }
  *   ctx = { series:[{dir,no,slug,title,count}], tags:[string], posts:[{title,dir,stem}], history:[string] }
  *   item = { kind, label, hint, text, exec }   text = the whole new input line after accepting
@@ -10,6 +11,28 @@ import { COMMANDS_LIST } from "./commands-list.mjs";
 
 export const MAX_ITEMS = 12;
 export const THEME_NAMES = ["auto", "paper", "tokyo", "ink"];
+
+/** Term prefixes offered inside a /find expression: [text, hint]. */
+export const TERM_PREFIXES = [
+  ["tag:", "标签（同 #tag）"],
+  ["grep:", "按行匹配（字面 / /正则/i）"],
+  ["about:", "语义相似（可加 :top-N / :bottom-N）"],
+  ["title:", "只在标题里找"],
+  ["body:", "只在正文里找"],
+  ["folder:", "文件夹范围"],
+];
+/** Selector suffixes offered after about:<query>: [text, hint, complete?]. */
+export const ABOUT_SELECTORS = [
+  ["top-1", "最相似的 1 篇", true],
+  ["top-3", "最相似的 3 篇", true],
+  ["top-5", "最相似的 5 篇", true],
+  ["top-", "top-N：最相似的 N 篇", false],
+  ["bottom-1", "最不相似的 1 篇", true],
+  ["bottom-2", "最不相似的 2 篇", true],
+  ["bottom-", "bottom-N：最不相似的 N 篇", false],
+  [">0.85", "相似度 > 0.85", true],
+  [">", "相似度阈值 >0.85", false],
+];
 
 const low = (s) => String(s || "").toLowerCase();
 
@@ -75,8 +98,12 @@ export function complete(line, ctx = {}) {
     const argStart = line.length - m[4].length;
     const head = line.slice(0, argStart);
     const rest = m[4];
-    if (cmd === "tag") {
+    if (cmd === "find" || cmd === "tag") {
       tagItems(head, rest, ctx, items, seen);
+    } else if (cmd === "about") {
+      // /about dark:to…  → selector suffixes
+      const m2 = rest.match(/^([\s\S]+?):([^\s:"]*)$/);
+      if (m2 && !inOpenQuote(m2[1])) selectorItems(head + m2[1] + ":", m2[2], items, seen);
     } else if (cmd === "theme") {
       const w = low(rest.trim());
       for (const t of THEME_NAMES) {
@@ -117,6 +144,14 @@ function tagItems(head, rest, ctx, items, seen) {
     return;
   }
 
+  // about:<query>:<selector-in-progress>   (query may be a bare word or a closed "phrase")
+  const sm = rest.match(/about:(?:"[^"]*"|[^\s()&|":：]+)[:：]([^\s()&|":：]*)$/i);
+  if (sm) {
+    const cut = rest.length - sm[1].length;
+    selectorItems(head + rest.slice(0, cut), sm[1], items, seen);
+    return;
+  }
+
   const { before, prefix, tok } = currentTagToken(rest);
   if (/^\//.test(tok)) return; // regex in progress
   const base = head + before + prefix;
@@ -132,7 +167,7 @@ function tagItems(head, rest, ctx, items, seen) {
     } else if (qual === "folder" || qual === "dir") {
       for (const s of series) if (V === "" || low(s.slug).startsWith(V) || low(s.dir).startsWith(V)) push(items, seen, { kind: "folder", label: s.dir + "/", hint: folderHint(s), text: base + q[1] + ":" + s.slug, exec: true });
     } else if (qual === "title") {
-      for (const p of posts) if (V && low(p.title).startsWith(V) && !/\s/.test(p.title)) push(items, seen, { kind: "post", label: p.title, hint: p.dir + "/", text: base + q[1] + ":" + p.title, exec: true });
+      for (const p of posts) if (V && low(p.title).startsWith(V) && low(p.title) !== V) push(items, seen, { kind: "post", label: p.title, hint: p.dir + "/", text: base + q[1] + ":" + (/[\s()&|"]/.test(p.title) ? '"' + p.title + '"' : p.title), exec: true });
     }
     return;
   }
@@ -156,6 +191,12 @@ function tagItems(head, rest, ctx, items, seen) {
       push(items, seen, { kind: "folder", label: form, hint: folderHint(s), text: base + form, exec: true });
     }
   }
+  // 1b. term prefixes: tag: grep: about: title: body: folder:
+  if (!tagMode && T !== "" && !T.includes(":")) {
+    for (const [pfx, hint] of TERM_PREFIXES) {
+      if (pfx.startsWith(T)) push(items, seen, { kind: "term", label: pfx, hint, text: base + pfx, exec: false });
+    }
+  }
   // 2. tags
   for (const t of tags) {
     const L = low(t);
@@ -172,6 +213,13 @@ function tagItems(head, rest, ctx, items, seen) {
         push(items, seen, { kind: "post", label: p.title, hint: p.dir + "/", text: base + lit, exec: true });
       }
     }
+  }
+}
+
+function selectorItems(base, partial, items, seen) {
+  const P = low(partial);
+  for (const [sel, hint, done] of ABOUT_SELECTORS) {
+    if (sel.startsWith(P) && sel !== P) push(items, seen, { kind: "term", label: sel, hint, text: base + sel, exec: done });
   }
 }
 

@@ -76,3 +76,50 @@ test("no ghost on a trailing space or an exact match", () => {
   assert.equal(complete("/tag poe/", c).ghost, "");
   assert.equal(complete("/tag poe/", ctx).ghost, " raven"); // ...except when history continues it
 });
+
+test("/find is the primary command; /tag /about /grep are listed as aliases", () => {
+  const names = complete("/", ctx).items.map((i) => i.text);
+  assert.equal(names[0], "/find ");
+  for (const n of ["/tag ", "/about ", "/grep ", "/theme ", "/help "]) assert.ok(names.includes(n) || n === "/help ", n);
+  assert.equal(complete("/fi", ctx).ghost, "nd ");
+  assert.equal(complete("/gr", ctx).ghost, "ep ");
+  assert.match(complete("/ta", ctx).items[0].hint, /find/);
+});
+
+test("/find: term prefixes tag: grep: about: title: body:", () => {
+  assert.ok(texts("/find ta").includes("/find tag:"));
+  assert.ok(texts("/find gr").includes("/find grep:"));
+  assert.equal(complete("/find ab", ctx).ghost, "out:");
+  assert.ok(texts("/find ti").includes("/find title:"));
+  assert.ok(texts("/find poe/ & bo").includes("/find poe/ & body:"));
+  assert.ok(texts("/find !ab").includes("/find !about:"));
+  assert.equal(complete("/find ta", ctx).items.find((i) => i.text === "/find tag:").exec, false);
+});
+
+test("/find: tag: values and folder: values", () => {
+  assert.ok(texts("/find tag:j").includes("/find tag:js"));
+  assert.ok(texts("/find tag:").includes("/find tag:poe"));
+  assert.ok(texts("/find folder:p").includes("/find folder:poe"));
+  assert.ok(texts("/find title:the").includes('/find title:"The Raven"'));
+});
+
+test("/find: selectors after about:x: (top-N / bottom-N / threshold)", () => {
+  assert.equal(complete("/find about:dark:t", ctx).ghost, "op-1");
+  assert.deepEqual(texts("/find about:dark:top-").sort(), ["/find about:dark:top-1", "/find about:dark:top-3", "/find about:dark:top-5"].sort());
+  assert.ok(texts("/find about:dark:b").includes("/find about:dark:bottom-2"));
+  assert.ok(texts('/find about:"the raven":t').includes('/find about:"the raven":top-3'));
+  assert.ok(texts("/find poe/ & about:死亡:").includes("/find poe/ & about:死亡:top-3"));
+  assert.ok(texts("/about dark:t").includes("/about dark:top-3"));
+  // a complete selector runs on Enter, a partial one only fills in
+  const items = complete("/find about:dark:", ctx).items;
+  assert.equal(items.find((i) => i.text.endsWith("top-3")).exec, true);
+  assert.equal(items.find((i) => i.text.endsWith("top-")).exec, false);
+});
+
+test("/find: folders, tags, titles and history still complete like /tag", () => {
+  assert.ok(texts("/find po").includes("/find poe/"));
+  assert.ok(texts("/find #f").includes("/find #fiction"));
+  assert.ok(texts("/find the").includes('/find "The Raven"'));
+  const c = { ...ctx, history: ["/find about:dark:top-3"] };
+  assert.equal(complete("/find about:d", c).items.some((i) => i.kind === "hist"), true);
+});

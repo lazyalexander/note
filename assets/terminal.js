@@ -2,8 +2,9 @@ import {
   createTermEngine,
   complete,
   searchDocs,
+  hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=36";
+} from "./term-engine.js?v=37";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -35,7 +36,6 @@ import {
   let menuClosed = false;  // first Esc closes the menu only
   let composing = false;
   let isOpen = false;
-  let aboutBusy = false;
   let msgTimer = 0;
   let indexPromise = null;
   let docs = null;
@@ -114,7 +114,7 @@ import {
     markActive();
   }
   function kindLabel(k) {
-    return { cmd: "cmd", folder: "dir", tag: "tag", post: "doc", hist: "hist", theme: "theme" }[k] || k;
+    return { cmd: "cmd", folder: "dir", tag: "tag", post: "doc", hist: "hist", theme: "theme", term: "term" }[k] || k;
   }
   function markActive() {
     suggest.querySelectorAll(".suggest-item").forEach(function (el, i) {
@@ -138,7 +138,7 @@ import {
     markActive();
   }
 
-  // ---------------------------------------------------------------- live status for /tag
+  // ---------------------------------------------------------------- live status for /find (+ /tag /about /grep sugar)
   function ensureIndex() {
     if (!indexPromise) {
       indexPromise = fetch("search-index.json")
@@ -149,19 +149,22 @@ import {
     return indexPromise;
   }
   function refreshLive() {
-    if (!isOpen || aboutBusy) return;
+    if (!isOpen) return;
     const p = engine.parseLine(input.value);
-    if (p.kind === "tag" && p.query) {
+    if (p.kind === "find" && p.query) {
       if (!docs) { ensureIndex(); return; }
       const r = searchDocs(docs, p.query);
-      if (r.ok && !r.empty) setEcho(r.results.length + " 篇匹配 · Enter 查看结果页");
-      else setEcho("");
+      const rewritten = p.query !== p.arg ? "= /find " + p.query + " · " : "";
+      if (!r.ok) setEcho("");
+      else if (r.empty) setEcho("");
+      else if (hasAbout(r.ast)) setEcho(rewritten + "含语义项 about: · Enter 查看结果页（首次需加载模型）");
+      else setEcho(rewritten + r.results.length + " 篇匹配 · Enter 查看结果页");
     } else if (echo.dataset.live === "1") setEcho("");
   }
 
   function refresh() {
     if (composing) return;
-    // the bar opens with "/" pre-typed; typing "/tag" on top of it must not give "//tag"
+    // the bar opens with "/" pre-typed; typing "/find" on top of it must not give "//find"
     if (/^\/\/+/.test(input.value)) input.value = input.value.replace(/^\/+/, "/");
     const res = complete(input.value, ctx);
     items = res.items;
@@ -171,7 +174,7 @@ import {
     menuClosed = false;
     echo.dataset.live = "0";
     setEcho("");
-    if (engine.parseLine(input.value).kind === "tag") { echo.dataset.live = "1"; refreshLive(); }
+    if (engine.parseLine(input.value).kind === "find") { echo.dataset.live = "1"; refreshLive(); }
     renderMenu();
     renderGhost();
   }
@@ -182,35 +185,6 @@ import {
     const a = document.createElement("a");
     a.href = href;
     window.location.assign(a.href);
-  }
-
-  async function runAbout(query) {
-    if (aboutBusy) return;
-    aboutBusy = true;
-    items = []; ghost = ""; selected = -1;
-    renderMenu(); renderGhost();
-    setEcho("about: searching…");
-    try {
-      const mod = await import("./about-search.js?v=36");
-      const result = await mod.aboutSearch(query, 5, function (msg) { setEcho("about: " + msg); });
-      const hits = result.hits || [];
-      items = hits.map(function (h) {
-        return { kind: "post", label: h.title, hint: (h.scoreLabel || "") + "  " + h.stem, href: h.href, text: "", exec: true };
-      });
-      selected = items.length ? 0 : -1;
-      auto = -1; ghost = "";
-      renderMenu(); renderGhost();
-      echo.dataset.live = "0";
-      if (!hits.length) {
-        setEcho("about: no hits · load " + result.loadMs + "ms · query " + result.queryMs + "ms", true);
-      } else {
-        setEcho("about: " + hits.length + " hits · load " + result.loadMs + "ms · query " + result.queryMs + "ms · total " + result.totalMs + "ms · ↑↓ Enter");
-      }
-    } catch (err) {
-      setEcho("about error: " + (err && err.message ? err.message : String(err)), true);
-    } finally {
-      aboutBusy = false;
-    }
   }
 
   function setTheme(name) {
@@ -236,7 +210,6 @@ import {
       setEcho("theme · " + action.name);
       return;
     }
-    if (action.type === "about") { remember(line); runAbout(action.query); return; }
     if (action.type === "search") { remember(line); go(action.href); return; }
     if (action.type === "navigate") { if (!action.egg) remember(line); go(action.post.href); return; }
   }
@@ -377,8 +350,8 @@ import {
     submitLine();
   });
 
-  // Warm /about index + e5 model in the background so first /about is snappy.
-  import("./about-search.js?v=36")
+  // Warm the embeddings index + e5 model in the background so the first about: term is snappy.
+  import("./about-search.js?v=37")
     .then(function (mod) { if (mod && typeof mod.ensureAboutReady === "function") return mod.ensureAboutReady(null); })
     .catch(function () {});
 

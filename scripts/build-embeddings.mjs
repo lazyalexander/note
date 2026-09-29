@@ -1,7 +1,9 @@
 /**
  * Build passage embeddings for /about semantic search.
  * Model: Xenova/multilingual-e5-small (query:/passage: prefixes).
- * Long posts are chunked; client takes max cosine per doc.
+ * Posts are split into paragraph-aware passages (<= CHUNK chars); each passage text is stored next to its
+ * vector so the results page can show the best-matching passage. The client scores a post as the max cosine
+ * over its passages (the last passage is the title alone).
  */
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
@@ -14,8 +16,8 @@ const root = join(__dirname, "..");
 const contentDir = join(root, "content");
 const outDir = join(root, "assets");
 const outFile = join(outDir, "embeddings.json");
-const CHUNK = 1400;
-const OVERLAP = 200;
+const CHUNK = 450; // max chars per passage (e5-small handles 512 tokens; CJK is ~1 token/char)
+const VEC_DIGITS = 4;
 
 function extractTitle(md, stem) {
   const m = md.match(/^#\s+(.+)$/m);
@@ -28,26 +30,53 @@ function extractTags(md) {
   return [...m[0].matchAll(/@([\w\-\u4e00-\u9fff]+)/g)].map((x) => x[1]);
 }
 
-function stripMd(md) {
+/** Markdown → plain paragraphs (blank-line separated blocks, inner whitespace collapsed). */
+function paragraphs(md) {
   return String(md)
     .replace(/^#[^\n]*\n/, "")
     .replace(/^@[^\n]*\n/m, "")
-    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/```[\s\S]*?```/g, "\n\n")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/[#>*_`~]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/[#>*_`~|]/g, " ")
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter((p) => p.length > 1);
 }
 
-function chunkText(text, size, overlap) {
-  if (text.length <= size) return [text];
+/** Split an over-long paragraph at sentence ends (then hard-cut at spaces). */
+function splitLong(p, max) {
+  const sents = p.split(/(?<=[.!?。！？;；”"])\s+|(?<=[。！？；])/u).filter(Boolean);
   const out = [];
-  let i = 0;
-  while (i < text.length) {
-    out.push(text.slice(i, i + size));
-    if (i + size >= text.length) break;
-    i += size - overlap;
+  let cur = "";
+  const flush = () => { if (cur.trim()) out.push(cur.trim()); cur = ""; };
+  for (let s of sents) {
+    while (s.length > max) {
+      const cut = s.lastIndexOf(" ", max) > max / 2 ? s.lastIndexOf(" ", max) : max;
+      if (cur) flush();
+      out.push(s.slice(0, cut).trim());
+      s = s.slice(cut).trim();
+    }
+    if (cur && cur.length + 1 + s.length > max) flush();
+    cur = cur ? cur + " " + s : s;
   }
+  flush();
+  return out;
+}
+
+/** Paragraph-aware chunks of at most `max` chars (short paragraphs are packed together up to `max`). */
+function chunkParagraphs(paras, max) {
+  const out = [];
+  let cur = "";
+  for (const p of paras) {
+    for (const piece of p.length > max ? splitLong(p, max) : [p]) {
+      if (cur && cur.length + 1 + piece.length > max) {
+        out.push(cur);
+        cur = "";
+      }
+      cur = cur ? cur + " " + piece : piece;
+    }
+  }
+  if (cur) out.push(cur);
   return out;
 }
 
@@ -72,32 +101,34 @@ async function main() {
     const { stem, md } = src;
     const title = extractTitle(md, src.name);
     const tags = [];
-    const body = stripMd(md);
-    const tagLine = tags.length ? tags.map((t) => "@" + t).join(" ") : "";
-    const head = `${title}. ${tagLine}`.trim();
-    const chunks = chunkText(body, CHUNK, OVERLAP);
+    const body = paragraphs(md);
+    const chunks = chunkParagraphs(body, CHUNK);
     const vectors = [];
+    const passages = [];
     const t1 = Date.now();
-    for (let i = 0; i < chunks.length; i++) {
-      const passage = `passage: ${head}. ${chunks[i]}`.slice(0, 8000);
-      vectors.push(await embedPassage(extractor, passage));
+    for (const c of chunks) {
+      vectors.push(await embedPassage(extractor, `passage: ${c}`));
+      passages.push(c);
     }
-    // title-only vector helps short queries
-    vectors.push(await embedPassage(extractor, `passage: ${head}`));
+    // title-only vector helps short queries (empty passage text = no snippet)
+    vectors.push(await embedPassage(extractor, `passage: ${title}`));
+    passages.push("");
     console.log(
-      `embedded ${stem} chunks=${vectors.length} dim=${vectors[0].length} in ${Date.now() - t1}ms`
+      `embedded ${stem} passages=${vectors.length} dim=${vectors[0].length} in ${Date.now() - t1}ms`
     );
     docs.push({
       stem,
       title,
       href: `posts/${stem}.html`,
-      chars: body.length,
+      chars: body.join(" ").length,
       tags,
-      vectors,
+      passages,
+      vectors: vectors.map((v) => v.map((x) => Number(x.toFixed(VEC_DIGITS)))),
     });
   }
 
   const payload = {
+    v: 2,
     model: "Xenova/multilingual-e5-small",
     prefix: { query: "query: ", passage: "passage: " },
     createdAt: new Date().toISOString(),

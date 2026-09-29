@@ -1,4 +1,4 @@
-/** Auto-bundled from text-scrub + tag-match + query + commands-list + complete + term-engine. */
+/** Auto-bundled from text-scrub + tag-match + about + query + commands-list + complete + term-engine. */
 
 /** IME / Unicode cleanup helpers for the note TUI. */
 
@@ -66,6 +66,88 @@ export function filterPostsByTag(posts, query, maxLen = TAG_QUERY_MAX) {
 }
 
 /**
+ * Semantic-search helpers (pure, no DOM / no model): cosine scoring over a precomputed passage-embedding index,
+ * selector picking (top-N / bottom-N / >threshold) and the adaptive default set size.
+ */
+
+/** Adaptive default: keep the outliers of the score distribution, z >= DYN_Z above the mean. */
+export const DYN_Z = 0.75;
+/** If best - worst is below this the scores are flat (e5 scores live in ~0.75–0.90): no real signal → keep only the best one. */
+export const DYN_MIN_SPREAD = 0.035;
+
+export function cosine(a, b) {
+  let s = 0;
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) s += a[i] * b[i];
+  return s;
+}
+
+/**
+ * Score every post: max cosine over its passages (the embeddings index is per passage — paragraph-packed chunks
+ * of <= ~450 chars plus one title-only vector). → Map(stem → { score, idx, passage })
+ * `passage` is the best-matching passage text ("" when the title-only vector wins).
+ */
+export function scoreEmbeddings(qv, embIndex) {
+  const out = new Map();
+  for (const d of (embIndex && embIndex.docs) || []) {
+    const vecs = Array.isArray(d.vectors) ? d.vectors : d.vector ? [d.vector] : [];
+    let best = -Infinity;
+    let bi = -1;
+    for (let i = 0; i < vecs.length; i++) {
+      const s = cosine(qv, vecs[i]);
+      if (s > best) {
+        best = s;
+        bi = i;
+      }
+    }
+    if (bi < 0) continue;
+    out.set(d.stem, { score: best, idx: bi, passage: (Array.isArray(d.passages) && d.passages[bi]) || "" });
+  }
+  return out;
+}
+
+/** Upper bound of the adaptive default for a candidate set of n posts: at most ceil(n/2), and never everything (n>=2). */
+export function dynamicMax(n) {
+  if (n <= 1) return Math.max(0, n);
+  return Math.min(n - 1, Math.ceil(n / 2));
+}
+
+/**
+ * How many of the best-scoring posts to keep when the query gives no explicit selector.
+ * z-score cut on the score distribution: keep posts whose score is >= mean + DYN_Z * stddev (i.e. the clear
+ * outliers of THIS query, whatever the model's absolute score range is), bounded to [1, dynamicMax(n)].
+ * n=0 → 0, n=1 → 1, all-equal / nearly flat scores (no signal) → 1.
+ */
+export function dynamicCount(scores) {
+  const s = (scores || []).filter(Number.isFinite).sort((a, b) => b - a);
+  const n = s.length;
+  if (n <= 1) return n;
+  const cap = dynamicMax(n);
+  const mean = s.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(s.reduce((a, b) => a + (b - mean) * (b - mean), 0) / n);
+  if (!(sd > 1e-9) || s[0] - s[n - 1] < DYN_MIN_SPREAD) return 1;
+  let k = 0;
+  while (k < cap && (s[k] - mean) / sd >= DYN_Z) k++;
+  return Math.max(1, k);
+}
+
+/**
+ * Pick ids from [{id, score}] by selector. sel: null (adaptive) | {mode:"top"|"bottom", n} | {mode:"gt", min, inclusive}.
+ * Returns ids ordered by score descending (ties keep input order).
+ */
+export function selectAbout(entries, sel) {
+  const arr = (entries || []).filter((e) => Number.isFinite(e.score)).map((e, i) => ({ ...e, _i: i }));
+  arr.sort((a, b) => b.score - a.score || a._i - b._i);
+  let picked;
+  if (!sel) picked = arr.slice(0, dynamicCount(arr.map((e) => e.score)));
+  else if (sel.mode === "top") picked = arr.slice(0, sel.n);
+  else if (sel.mode === "bottom") picked = arr.slice(Math.max(0, arr.length - sel.n));
+  else if (sel.mode === "gt") picked = arr.filter((e) => (sel.inclusive ? e.score >= sel.min : e.score > sel.min));
+  else picked = [];
+  return picked.map((e) => e.id);
+}
+
+/**
  * /tag query language: parser + evaluator + snippet/highlight helpers.
  * Pure ES module (no DOM, no Node APIs) — bundled into assets/term-engine.js for the browser.
  *
@@ -74,6 +156,10 @@ export function filterPostsByTag(posts, query, maxLen = TAG_QUERY_MAX) {
  *   and   := not (['&'] not)*
  *   not   := '!' not | atom | '(' expr ')'
  *   atom  := word | "phrase" | /regex/flags | #tag | @tag | dir/ | (title|body|tag|folder):value
+ *          | grep:word | grep:"phrase" | grep:/re/flags          (line-oriented, case-insensitive)
+ *          | about:query[:sel]     query = word | "phrase";  sel = top-N | bottom-N | >score | >=score
+ *
+ * about: terms are semantic; they need similarity scores from a provider (see searchDocs / searchDocsAsync).
  */
 
 export class QueryError extends Error {
@@ -87,7 +173,9 @@ export class QueryError extends Error {
 
 const OPS = "()&|";
 const REGEX_FLAGS = "imsu";
-const QUALIFIER = /^(title|body|tag|folder|dir):/i;
+const QUALIFIER = /^(title|body|tag|folder|dir|grep|about)[:：]/i;
+const MAX_TOPN = 1000;
+const escRe = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Full-width operators (Chinese IME) are accepted as operators when they appear unquoted. Text itself is never rewritten. */
 const FW_OPS = { "（": "(", "）": ")", "｜": "|", "＆": "&", "！": "!" };
@@ -168,6 +256,79 @@ function lex(src) {
     return { value: src.slice(start, j), end: j };
   }
 
+  /** Parse a selector suffix (text after the ":"): top-N | bottom-N | >score | >=score. */
+  function parseSelector(text, at) {
+    const len = Math.max(1, text.length);
+    let m = text.match(/^(top|bottom)(?:-(.*))?$/i);
+    if (m) {
+      const kind = m[1].toLowerCase();
+      if (m[2] === undefined) throw new QueryError(`bad selector "${text}" — write ${kind}-N, e.g. ${kind}-3`, at, len);
+      if (!/^\d+$/.test(m[2])) throw new QueryError(`bad selector "${text}" — N must be a whole number, e.g. ${kind}-3`, at, len);
+      const num = Number(m[2]);
+      if (num < 1) throw new QueryError(`bad selector "${text}" — N must be at least 1`, at, len);
+      if (num > MAX_TOPN) throw new QueryError(`bad selector "${text}" — N is at most ${MAX_TOPN}`, at, len);
+      return { mode: kind, n: num };
+    }
+    m = text.match(/^(>=?)(.*)$/);
+    if (m) {
+      if (!/^(\d+\.?\d*|\.\d+)$/.test(m[2])) throw new QueryError(`bad selector "${text}" — write ${m[1]}0.5 (a similarity between 0 and 1)`, at, len);
+      const min = Number(m[2]);
+      if (min < 0 || min > 1) throw new QueryError(`bad selector "${text}" — similarity must be between 0 and 1`, at, len);
+      return { mode: "gt", min, inclusive: m[1] === ">=" };
+    }
+    throw new QueryError(`bad selector "${text}" — expected top-N, bottom-N or >score`, at, len);
+  }
+  const isSelectorish = (t) => /^(top|bottom)(-|$)/i.test(t) || /^>/.test(t) || t === "";
+
+  /** about:query[:selector]  — src[start..) is right after "about:". */
+  function readAbout(start, termStart) {
+    let value;
+    let j;
+    if (src[start] === '"') {
+      const q = readQuoted(start);
+      value = q.value;
+      j = q.end;
+      let sel = null;
+      if (j < n && (src[j] === ":" || src[j] === "：")) {
+        let k = j + 1;
+        while (k < n && !isSpace(src[k]) && !isOp(src[k])) k++;
+        sel = parseSelector(src.slice(j + 1, k), j + 1);
+        j = k;
+      }
+      return { value: value.trim(), sel, end: j };
+    }
+    if (src[start] === "/") {
+      const r = readRegex(start);
+      throw new QueryError("regex is not supported with about: — write a phrase in quotes", termStart, r.end - termStart);
+    }
+    const w = readWord(start);
+    let text = w.value;
+    let sel = null;
+    const ci = Math.max(text.lastIndexOf(":"), text.lastIndexOf("："));
+    if (ci >= 0 && isSelectorish(text.slice(ci + 1))) {
+      sel = parseSelector(text.slice(ci + 1), start + ci + 1);
+      text = text.slice(0, ci);
+    }
+    if (!text) throw new QueryError('expected a query after "about:"', termStart, w.end - termStart);
+    return { value: text, sel, end: w.end };
+  }
+
+  /** grep:word | grep:"phrase" | grep:/re/flags  — always case-insensitive. */
+  function readGrep(start, termStart) {
+    const c = src[start];
+    if (c === "/") {
+      const r = readRegex(start);
+      const flags = r.flags.includes("i") ? r.flags : r.flags + "i";
+      return { value: r.value, isRegex: true, flags, re: new RegExp(r.value, flags), end: r.end };
+    }
+    if (c === '"') {
+      const q = readQuoted(start);
+      return { value: q.value, isRegex: false, flags: "i", re: new RegExp(escRe(q.value), "i"), end: q.end };
+    }
+    const w = readWord(start);
+    return { value: w.value, isRegex: false, flags: "i", re: new RegExp(escRe(w.value), "i"), end: w.end };
+  }
+
   while (i < n) {
     const c = normOp(src[i]);
     if (isSpace(c)) {
@@ -196,6 +357,18 @@ function lex(src) {
         throw new QueryError(`expected a value after "${qm[0]}"`, start, qm[0].length);
       }
       if (qual === "title" || qual === "body") field = qual;
+      if (qual === "about") {
+        const a = readAbout(i, start);
+        i = a.end;
+        tokens.push({ t: "term", pos: start, len: i - start, node: { type: "term", kind: "about", field: "any", value: a.value, sel: a.sel, pos: start, len: i - start } });
+        continue;
+      }
+      if (qual === "grep") {
+        const g = readGrep(i, start);
+        i = g.end;
+        tokens.push({ t: "term", pos: start, len: i - start, node: { type: "term", kind: "grep", field: "any", value: g.value, isRegex: g.isRegex, flags: g.flags, re: g.re, pos: start, len: i - start } });
+        continue;
+      }
     }
     const ch = src[i];
     if (ch === '"') {
@@ -346,16 +519,39 @@ export function folderMatches(doc, frag) {
 
 const normTag = (t) => String(t || "").trim().replace(/^[#@]/, "").toLowerCase();
 
+/** Body text of a doc: `body`, or the joined `lines` (the search index stores lines). */
+export function bodyOf(doc) {
+  if (doc.body != null) return String(doc.body);
+  return Array.isArray(doc.lines) ? doc.lines.join(" ") : "";
+}
+/** Lines of a doc (1-based numbering is applied by callers); falls back to newline-split body. */
+export function linesOf(doc) {
+  if (Array.isArray(doc.lines)) return doc.lines;
+  const b = doc.body == null ? "" : String(doc.body);
+  return b ? b.split(/\r?\n/) : [];
+}
+
 const lowerCache = new WeakMap();
 function lowered(doc) {
   let c = lowerCache.get(doc);
   if (!c) {
-    c = { title: String(doc.title || "").toLowerCase(), body: String(doc.body || "").toLowerCase(), tags: (doc.tags || []).map(normTag) };
+    c = { title: String(doc.title || "").toLowerCase(), body: bodyOf(doc).toLowerCase(), tags: (doc.tags || []).map(normTag) };
     lowerCache.set(doc, c);
   }
   return c;
 }
 
+/** Lines that match a grep term: [{ n, text }] — n = 0 for the title, 1-based body line numbers otherwise. */
+export function grepMatchLines(doc, term) {
+  const out = [];
+  if (term.re.test(String(doc.title || ""))) out.push({ n: 0, text: String(doc.title || "") });
+  linesOf(doc).forEach((text, i) => {
+    if (term.re.test(text)) out.push({ n: i + 1, text });
+  });
+  return out;
+}
+
+/** Literal (non-semantic) term test. about: terms are decided by the score sets, not here. */
 export function termMatches(term, doc) {
   switch (term.kind) {
     case "tag":
@@ -365,8 +561,12 @@ export function termMatches(term, doc) {
     case "regex": {
       const t = term.field !== "body" && term.re.test(String(doc.title || ""));
       if (t) return true;
-      return term.field !== "title" && term.re.test(String(doc.body || ""));
+      return term.field !== "title" && term.re.test(bodyOf(doc));
     }
+    case "grep":
+      return grepMatchLines(doc, term).length > 0;
+    case "about":
+      return false;
     default: {
       const v = term.value.toLowerCase();
       const l = lowered(doc);
@@ -376,21 +576,135 @@ export function termMatches(term, doc) {
   }
 }
 
-export function evalNode(node, doc) {
+export function hasAbout(node) {
+  if (!node) return false;
+  if (node.type === "term") return node.kind === "about";
+  if (node.type === "not") return hasAbout(node.arg);
+  return node.args.some(hasAbout);
+}
+
+/** Distinct about-queries (in order of appearance). */
+export function aboutQueries(node, out = []) {
+  if (!node) return out;
+  if (node.type === "term") {
+    if (node.kind === "about" && !out.includes(node.value)) out.push(node.value);
+  } else if (node.type === "not") aboutQueries(node.arg, out);
+  else node.args.forEach((a) => aboutQueries(a, out));
+  return out;
+}
+export function aboutTerms(node, out = []) {
+  if (!node) return out;
+  if (node.type === "term") {
+    if (node.kind === "about") out.push(node);
+  } else if (node.type === "not") aboutTerms(node.arg, out);
+  else node.args.forEach((a) => aboutTerms(a, out));
+  return out;
+}
+
+/** Literal-only truth value (about-free subtrees only — used to derive the scope of an about: selector). */
+function evalLiteral(node, doc) {
   switch (node.type) {
     case "term":
       return termMatches(node, doc);
     case "not":
-      return !evalNode(node.arg, doc);
+      return !evalLiteral(node.arg, doc);
     case "and":
-      return node.args.every((a) => evalNode(a, doc));
+      return node.args.every((a) => evalLiteral(a, doc));
     case "or":
-      return node.args.some((a) => evalNode(a, doc));
+      return node.args.some((a) => evalLiteral(a, doc));
   }
   return false;
 }
 
-const TEXT_KINDS = ["word", "phrase", "regex"];
+/**
+ * Decide, for every about: term, which posts it selects.
+ *   scores: Map(query → Map(stem → { score, passage })).  A query that is missing / empty selects nothing.
+ * SCOPE RULE: a selector (top-N / bottom-N / adaptive default) is computed among the posts that satisfy the
+ * about-free terms AND-ed next to it (its "scope"), and among the whole corpus when there are none.
+ *   poe/ & about:x:top-2   → the 2 posts of poe/ most similar to x
+ *   (poe/ | blog/) about:x → adaptive cut among poe/ + blog/ posts
+ * OR and NOT pass the scope of their parent through unchanged. `>score` thresholds ignore scope.
+ * Returns { sets: Map(termNode → Map(stem → { score, passage })), report: [{ query, sel, candidates, picked, auto }] }.
+ */
+export function computeAboutSets(ast, docs, scores) {
+  const sets = new Map();
+  const report = [];
+  function walk(node, cand) {
+    if (!hasAbout(node)) return;
+    switch (node.type) {
+      case "term": {
+        const sc = scores && scores.get(node.value);
+        const entries = [];
+        if (sc) for (const d of cand) if (sc.has(d.stem)) entries.push({ id: d.stem, score: sc.get(d.stem).score });
+        const ids = selectAbout(entries, node.sel);
+        const m = new Map();
+        for (const id of ids) m.set(id, sc.get(id));
+        sets.set(node, m);
+        report.push({ query: node.value, sel: node.sel || null, candidates: entries.length, picked: ids.length, auto: !node.sel });
+        return;
+      }
+      case "not":
+        return walk(node.arg, cand);
+      case "or":
+        return node.args.forEach((a) => walk(a, cand));
+      case "and": {
+        const free = node.args.filter((a) => !hasAbout(a));
+        const scope = free.length ? cand.filter((d) => free.every((a) => evalLiteral(a, d))) : cand;
+        return node.args.forEach((a) => walk(a, scope));
+      }
+    }
+  }
+  walk(ast, docs || []);
+  return { sets, report };
+}
+
+/**
+ * Score one doc: null = no match, else { s, a } — s = combined score (literal terms 1, about-terms their
+ * similarity; AND = min, OR = max, NOT contributes nothing), a = best contributing about hit { query, score, passage }.
+ */
+export function evalScore(node, doc, sets) {
+  switch (node.type) {
+    case "term": {
+      if (node.kind === "about") {
+        const h = sets && sets.get(node) && sets.get(node).get(doc.stem);
+        return h ? { s: h.score, a: { query: node.value, score: h.score, passage: h.passage || "" } } : null;
+      }
+      return termMatches(node, doc) ? { s: 1, a: null } : null;
+    }
+    case "not":
+      return evalScore(node.arg, doc, sets) ? null : { s: 1, a: null };
+    case "and": {
+      let s = 1;
+      let a = null;
+      for (const c of node.args) {
+        const r = evalScore(c, doc, sets);
+        if (!r) return null;
+        if (r.s < s) s = r.s;
+        if (r.a && (!a || r.a.score > a.score)) a = r.a;
+      }
+      return { s, a };
+    }
+    case "or": {
+      let best = null;
+      let a = null;
+      for (const c of node.args) {
+        const r = evalScore(c, doc, sets);
+        if (!r) continue;
+        if (!best || r.s > best.s) best = r;
+        if (r.a && (!a || r.a.score > a.score)) a = r.a;
+      }
+      return best ? { s: best.s, a } : null;
+    }
+  }
+  return null;
+}
+
+/** Boolean evaluation (sets = result of computeAboutSets().sets; only needed for expressions with about:). */
+export function evalNode(node, doc, sets) {
+  return evalScore(node, doc, sets) !== null;
+}
+
+const TEXT_KINDS = ["word", "phrase", "regex", "grep"];
 
 /** Positive terms (for highlighting): everything not under an odd number of negations. Default: text terms only. */
 export function collectTerms(node, negated = false, out = [], kinds = TEXT_KINDS) {
@@ -402,23 +716,82 @@ export function collectTerms(node, negated = false, out = [], kinds = TEXT_KINDS
   return out;
 }
 
+function finishSearch(docs, parsed, scores, extra = {}) {
+  const ast = parsed.ast;
+  const { sets, report } = computeAboutSets(ast, docs, scores);
+  const withAbout = hasAbout(ast);
+  const info = new Map();
+  let rows = [];
+  (docs || []).forEach((d, i) => {
+    const r = evalScore(ast, d, sets);
+    if (r) rows.push({ d, i, r });
+  });
+  if (withAbout) rows.sort((x, y) => y.r.s - x.r.s || x.i - y.i);
+  const grepTerms = collectTerms(ast, false, [], ["grep"]);
+  for (const { d, r } of rows) {
+    const lines = [];
+    for (const t of grepTerms) {
+      for (const l of grepMatchLines(d, t)) if (!lines.some((x) => x.n === l.n)) lines.push(l);
+    }
+    lines.sort((x, y) => x.n - y.n);
+    info.set(d.stem, { score: r.s, about: r.a, lines });
+  }
+  return {
+    ok: true,
+    ast,
+    results: rows.map((x) => x.d),
+    info,
+    terms: collectTerms(ast),
+    tagTerms: collectTerms(ast, false, [], ["tag"]),
+    grepTerms,
+    hasAbout: withAbout,
+    ordered: withAbout,
+    aboutReport: report,
+    src: parsed.src,
+    ...extra,
+  };
+}
+
 /**
- * Run an expression over docs ({ title, body, tags, dir, seriesNo, seriesTitle, ... }).
- * Empty expression → ok with no results. Keeps the docs' original order.
+ * Run an expression over docs ({ stem, title, body|lines, tags, dir, seriesNo, seriesTitle, ... }).
+ * Empty expression → ok with no results. Literal-only expressions keep the docs' original order; expressions with
+ * about: terms are ordered by combined similarity (desc, stable).
+ * about: scores come from opts.about (Map query → Map stem → {score, passage}); queries that are absent are listed in
+ * `pending` and select nothing. See searchDocsAsync for the async provider interface.
  */
-export function searchDocs(docs, expr) {
+export function searchDocs(docs, expr, opts = {}) {
   const parsed = parseQuery(expr);
   if (!parsed.ok) return { ok: false, error: parsed.error, results: [], terms: [], src: parsed.src };
   if (!parsed.ast) return { ok: true, empty: true, results: [], terms: [], src: parsed.src };
-  const results = (docs || []).filter((d) => evalNode(parsed.ast, d));
-  return {
-    ok: true,
-    ast: parsed.ast,
-    results,
-    terms: collectTerms(parsed.ast),
-    tagTerms: collectTerms(parsed.ast, false, [], ["tag"]),
-    src: parsed.src,
-  };
+  const scores = opts.about || new Map();
+  const pending = aboutQueries(parsed.ast).filter((q) => !scores.has(q));
+  return finishSearch(docs, parsed, scores, { pending });
+}
+
+/**
+ * Async variant. opts.scoreAbout(query) → Promise<Map(stem → { score, passage })>  (or a plain Map).
+ * Each distinct query is requested once, in parallel. A provider failure does not fail the search: that query selects
+ * nothing and is reported in `aboutErrors` [{ query, message }], the literal parts of the expression still work.
+ */
+export async function searchDocsAsync(docs, expr, opts = {}) {
+  const parsed = parseQuery(expr);
+  if (!parsed.ok) return { ok: false, error: parsed.error, results: [], terms: [], src: parsed.src };
+  if (!parsed.ast) return { ok: true, empty: true, results: [], terms: [], src: parsed.src };
+  const queries = aboutQueries(parsed.ast);
+  const scores = new Map();
+  const aboutErrors = [];
+  await Promise.all(
+    queries.map(async (q) => {
+      try {
+        if (typeof opts.scoreAbout !== "function") throw new Error("semantic search is not available");
+        scores.set(q, await opts.scoreAbout(q));
+      } catch (e) {
+        scores.set(q, new Map());
+        aboutErrors.push({ query: q, message: String((e && e.message) || e) });
+      }
+    })
+  );
+  return finishSearch(docs, parsed, scores, { pending: [], aboutErrors });
 }
 
 // ---------------------------------------------------------------- snippets
@@ -432,7 +805,7 @@ export function findMatches(text, terms, field = "body") {
   for (const t of terms) {
     if (!TEXT_KINDS.includes(t.kind)) continue;
     if (t.field !== "any" && t.field !== field) continue;
-    if (t.kind === "regex") {
+    if (t.kind === "regex" || t.kind === "grep") {
       const re = new RegExp(t.re.source, t.re.flags.replace("g", "") + "g");
       let m;
       let guard = 0;
@@ -484,7 +857,7 @@ export function highlightParts(text, terms, field = "title") {
  * No body match (title/tag/folder-only hit) → the beginning of the body, unhighlighted.
  */
 export function makeSnippet(doc, terms, { before = 36, after = 84 } = {}) {
-  const body = String(doc.body || "");
+  const body = bodyOf(doc);
   const ranges = findMatches(body, terms, "body");
   if (!ranges.length) {
     const end = Math.min(body.length, before + after);
@@ -509,10 +882,52 @@ export function makeSnippet(doc, terms, { before = 36, after = 84 } = {}) {
   return { parts, matched: true };
 }
 
-/** Command catalogue shared by the engine (help text) and completion. */
+// ---------------------------------------------------------------- result view (search page)
+
+/** Shorten `text` to about `max` chars around the first highlighted range; returns { text, offset } (offset = chars cut at the start). */
+function clipAround(text, ranges, max) {
+  if (text.length <= max) return { text, offset: 0, cutStart: false, cutEnd: false };
+  const first = ranges.length ? ranges[0][0] : 0;
+  const start = Math.max(0, Math.min(first - Math.floor(max / 4), text.length - max));
+  return { text: text.slice(start, start + max), offset: start, cutStart: start > 0, cutEnd: start + max < text.length };
+}
+function partsWithEllipsis(text, terms, field, max) {
+  const ranges = findMatches(text, terms, field);
+  const c = clipAround(text, ranges, max);
+  const parts = highlightParts(c.text, terms, field);
+  if (c.cutStart) parts.unshift({ text: "…", hit: false });
+  if (c.cutEnd) parts.push({ text: "…", hit: false });
+  return parts;
+}
+
+/**
+ * What the results page shows under a hit:
+ *   { kind:"grep",    lines:[{ n, parts }], more }   grep -n style: matching lines (n=0 → title), capped
+ *   { kind:"passage", parts, score, query }          best semantic passage (about: hit)
+ *   { kind:"snippet", parts, matched }               ordinary snippet around the first literal match
+ * `info` = searchDocs().info.get(stem).
+ */
+export function makeResultView(doc, info, terms, { maxLines = 4, passageChars = 240 } = {}) {
+  const lines = (info && info.lines) || [];
+  if (lines.length) {
+    const shown = lines.slice(0, maxLines).map((l) => ({ n: l.n, parts: partsWithEllipsis(l.text, terms, l.n === 0 ? "title" : "body", 160) }));
+    return { kind: "grep", lines: shown, more: Math.max(0, lines.length - shown.length) };
+  }
+  const a = info && info.about;
+  if (a && a.passage) {
+    return { kind: "passage", parts: partsWithEllipsis(a.passage, terms, "body", passageChars), score: a.score, query: a.query };
+  }
+  const sn = makeSnippet(doc, terms);
+  if (a) return { kind: "passage", parts: sn.parts, score: a.score, query: a.query, fallback: true };
+  return { kind: "snippet", parts: sn.parts, matched: sn.matched };
+}
+
+/** Command catalogue shared by the engine (help text) and completion. /find is the only real search command. */
 export const COMMANDS_LIST = [
-  { name: "/tag", args: true, desc: "grep 搜索 · 标题 / 正文 / 标签 / 文件夹" },
-  { name: "/about", args: true, desc: "语义搜索（e5 模型）" },
+  { name: "/find", args: true, desc: "搜索 · 词 / tag: / grep: / about:（语义）· & | ! ( )" },
+  { name: "/tag", args: true, desc: "= /find（/tag js → tag:js）" },
+  { name: "/about", args: true, desc: "= /find about:…（语义，可加 :top-N）" },
+  { name: "/grep", args: true, desc: "= /find grep:…（按行匹配）" },
   { name: "/theme", args: true, desc: "auto | paper | tokyo | ink" },
   { name: "/help", args: false, desc: "打开命令说明" },
   { name: "/clear", args: false, desc: "清空输入与提示" },
@@ -520,7 +935,8 @@ export const COMMANDS_LIST = [
 
 /**
  * Command-bar completion (pure, no DOM). Sources in priority order:
- *   command names → folders → tags → post titles → history.
+ *   command names → folders → term prefixes (tag: grep: about: …) → tags → post titles → history.
+ * /find is the search command; /tag is an alias that accepts the same expressions; /about and /grep complete their own argument.
  * complete(line, ctx) → { items, ghost }
  *   ctx = { series:[{dir,no,slug,title,count}], tags:[string], posts:[{title,dir,stem}], history:[string] }
  *   item = { kind, label, hint, text, exec }   text = the whole new input line after accepting
@@ -528,6 +944,28 @@ export const COMMANDS_LIST = [
  */
 export const MAX_ITEMS = 12;
 export const THEME_NAMES = ["auto", "paper", "tokyo", "ink"];
+
+/** Term prefixes offered inside a /find expression: [text, hint]. */
+export const TERM_PREFIXES = [
+  ["tag:", "标签（同 #tag）"],
+  ["grep:", "按行匹配（字面 / /正则/i）"],
+  ["about:", "语义相似（可加 :top-N / :bottom-N）"],
+  ["title:", "只在标题里找"],
+  ["body:", "只在正文里找"],
+  ["folder:", "文件夹范围"],
+];
+/** Selector suffixes offered after about:<query>: [text, hint, complete?]. */
+export const ABOUT_SELECTORS = [
+  ["top-1", "最相似的 1 篇", true],
+  ["top-3", "最相似的 3 篇", true],
+  ["top-5", "最相似的 5 篇", true],
+  ["top-", "top-N：最相似的 N 篇", false],
+  ["bottom-1", "最不相似的 1 篇", true],
+  ["bottom-2", "最不相似的 2 篇", true],
+  ["bottom-", "bottom-N：最不相似的 N 篇", false],
+  [">0.85", "相似度 > 0.85", true],
+  [">", "相似度阈值 >0.85", false],
+];
 
 const low = (s) => String(s || "").toLowerCase();
 
@@ -593,8 +1031,12 @@ export function complete(line, ctx = {}) {
     const argStart = line.length - m[4].length;
     const head = line.slice(0, argStart);
     const rest = m[4];
-    if (cmd === "tag") {
+    if (cmd === "find" || cmd === "tag") {
       tagItems(head, rest, ctx, items, seen);
+    } else if (cmd === "about") {
+      // /about dark:to…  → selector suffixes
+      const m2 = rest.match(/^([\s\S]+?):([^\s:"]*)$/);
+      if (m2 && !inOpenQuote(m2[1])) selectorItems(head + m2[1] + ":", m2[2], items, seen);
     } else if (cmd === "theme") {
       const w = low(rest.trim());
       for (const t of THEME_NAMES) {
@@ -635,6 +1077,14 @@ function tagItems(head, rest, ctx, items, seen) {
     return;
   }
 
+  // about:<query>:<selector-in-progress>   (query may be a bare word or a closed "phrase")
+  const sm = rest.match(/about:(?:"[^"]*"|[^\s()&|":：]+)[:：]([^\s()&|":：]*)$/i);
+  if (sm) {
+    const cut = rest.length - sm[1].length;
+    selectorItems(head + rest.slice(0, cut), sm[1], items, seen);
+    return;
+  }
+
   const { before, prefix, tok } = currentTagToken(rest);
   if (/^\//.test(tok)) return; // regex in progress
   const base = head + before + prefix;
@@ -650,7 +1100,7 @@ function tagItems(head, rest, ctx, items, seen) {
     } else if (qual === "folder" || qual === "dir") {
       for (const s of series) if (V === "" || low(s.slug).startsWith(V) || low(s.dir).startsWith(V)) push(items, seen, { kind: "folder", label: s.dir + "/", hint: folderHint(s), text: base + q[1] + ":" + s.slug, exec: true });
     } else if (qual === "title") {
-      for (const p of posts) if (V && low(p.title).startsWith(V) && !/\s/.test(p.title)) push(items, seen, { kind: "post", label: p.title, hint: p.dir + "/", text: base + q[1] + ":" + p.title, exec: true });
+      for (const p of posts) if (V && low(p.title).startsWith(V) && low(p.title) !== V) push(items, seen, { kind: "post", label: p.title, hint: p.dir + "/", text: base + q[1] + ":" + (/[\s()&|"]/.test(p.title) ? '"' + p.title + '"' : p.title), exec: true });
     }
     return;
   }
@@ -674,6 +1124,12 @@ function tagItems(head, rest, ctx, items, seen) {
       push(items, seen, { kind: "folder", label: form, hint: folderHint(s), text: base + form, exec: true });
     }
   }
+  // 1b. term prefixes: tag: grep: about: title: body: folder:
+  if (!tagMode && T !== "" && !T.includes(":")) {
+    for (const [pfx, hint] of TERM_PREFIXES) {
+      if (pfx.startsWith(T)) push(items, seen, { kind: "term", label: pfx, hint, text: base + pfx, exec: false });
+    }
+  }
   // 2. tags
   for (const t of tags) {
     const L = low(t);
@@ -690,6 +1146,13 @@ function tagItems(head, rest, ctx, items, seen) {
         push(items, seen, { kind: "post", label: p.title, hint: p.dir + "/", text: base + lit, exec: true });
       }
     }
+  }
+}
+
+function selectorItems(base, partial, items, seen) {
+  const P = low(partial);
+  for (const [sel, hint, done] of ABOUT_SELECTORS) {
+    if (sel.startsWith(P) && sel !== P) push(items, seen, { kind: "term", label: sel, hint, text: base + sel, exec: done });
   }
 }
 
@@ -722,24 +1185,86 @@ export function searchHref(expr) {
   return "search.html?q=" + encodeURIComponent(expr);
 }
 
-export function parseLine(raw) {
+const stripCf = (s) => String(s == null ? "" : s).replace(/[\p{Cf}]/gu, "").trim();
+
+/** Quote a value for a find term only when it needs it. */
+function quoteIfNeeded(v) {
+  if (/^"(?:[^"\\]|\\.)*"$/.test(v)) return v; // already a quoted phrase
+  if (/[\s()&|!"'：:（）｜＆！]/.test(v) || v === "") return '"' + v.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  return v;
+}
+
+/**
+ * /tag sugar: a lone bare word that names a known tag becomes tag:word (/tag js → tag:js); with no tag list given it is
+ * assumed to be a tag. Anything else — including a lone word that is not a tag, like the old /tag 心跳 — is already a
+ * find expression and is passed through unchanged (full back-compat with the old /tag grammar).
+ */
+export function rewriteTag(arg, knownTags) {
+  const a = stripCf(arg);
+  if (/^[^\s()&|!"'#@:/\\（）｜＆！：]+$/.test(a) && !a.endsWith("/")) {
+    if (!knownTags) return "tag:" + a;
+    const want = normalizeTag(a);
+    if (knownTags.some((t) => normalizeTag(t) === want)) return "tag:" + a;
+  }
+  return a;
+}
+
+/** /about sugar: `dark`, `dark:top-3`, `black cat guilt`, `"the raven":bottom-2` → about:… */
+export function rewriteAbout(arg) {
+  const a = stripCf(arg).replace(/[：]/g, ":");
+  if (!a) return "";
+  const m = a.match(/^([\s\S]*?):((?:top|bottom)(?:-\S*)?|>=?\S*)$/i);
+  const sel = m ? ":" + m[2] : "";
+  const q = (m ? m[1] : a).trim();
+  return "about:" + quoteIfNeeded(q) + sel;
+}
+
+/** /grep sugar: `pat`, `/re/i`, `"a b"`, `two words` → grep:… */
+export function rewriteGrep(arg) {
+  const a = stripCf(arg);
+  if (!a) return "";
+  if (/^\/[\s\S]+\/[a-z]*$/.test(a)) return "grep:" + a;
+  return "grep:" + quoteIfNeeded(a);
+}
+
+/**
+ * Parse a command line. There is ONE search command, /find <expr>; /tag /about /grep are sugar that rewrite to a
+ * find expression → { kind:"find", cmd, arg, query } (query = canonical find expression, "" when the argument is missing).
+ */
+export function parseLine(raw, knownTags) {
   const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
-  // /tag keeps the raw text: the query parser handles full-width operators itself.
-  let m = String(raw == null ? "" : raw).replace(/[\p{Cf}]/gu, "").trim().match(/^\/?tag(?:\s+([\s\S]*))?$/i);
-  if (m) return { kind: "tag", query: m[1] == null ? null : m[1].trim() };
+  // find-family commands keep the raw text: the query parser handles full-width operators itself.
+  let m = stripCf(raw).match(/^\/?(find|tag|about|grep)(?:\s+([\s\S]*))?$/i);
+  if (m) {
+    const cmd = m[1].toLowerCase();
+    const arg = m[2] == null ? "" : m[2].trim();
+    let query = "";
+    if (arg) {
+      if (cmd === "find") query = arg;
+      else if (cmd === "tag") query = rewriteTag(arg, knownTags);
+      else if (cmd === "about") query = rewriteAbout(arg);
+      else query = rewriteGrep(arg);
+    }
+    return { kind: "find", cmd, arg, query };
+  }
   m = line.match(/^\/?goto(?:\s+(.*))?$/i);
   if (m) {
-    return { kind: "echo", message: "/goto is gone — use /tag <expr>  (e.g. /tag poe/ 乌鸦)", err: true };
+    return { kind: "echo", message: "/goto is gone — use /find <expr>  (e.g. /find poe/ 乌鸦)", err: true };
   }
-  m = line.match(/^\/?about(?:\s+(.*))?$/i);
-  if (m) return { kind: "about", query: m[1] == null ? null : m[1] };
   if (/^\/?clear$/i.test(line)) return { kind: "clear" };
   if (/^\/?lost$/i.test(line)) return { kind: "lost" };
   m = line.match(/^\/?theme(?:\s+(.*))?$/i);
   if (m) return { kind: "theme", name: m[1] == null ? null : m[1].trim().toLowerCase() };
   return { kind: "other", text: line };
 }
+
+const USAGE = {
+  find: "usage: /find <expr>   e.g.  /find poe/ & (乌鸦 | about:死亡:top-2) & !#draft",
+  tag: "usage: /tag <expr>   (sugar for /find — /tag js = /find tag:js)",
+  about: "usage: /about <query>[:top-N | :bottom-N]   e.g.  /about dark:top-3   (= /find about:dark:top-3)",
+  grep: "usage: /grep <pattern>   e.g.  /grep raven   /grep /rav.n/i   (= /find grep:…)",
+};
 
 export function findPostByStem(posts, stem) {
   const list = Array.isArray(posts) ? posts : [];
@@ -765,12 +1290,13 @@ export function findHelpPost(posts) {
  */
 export function createTermEngine(options = {}) {
   const posts = Array.isArray(options.posts) ? options.posts : [];
+  const knownTags = Array.from(new Set(posts.reduce((a, p) => a.concat(postTags(p)), [])));
   let navigating = false;
 
   function submit(raw) {
     const line = scrubInvisible(raw).trim();
     if (!line) return { type: "noop" };
-    const parsed = parseLine(raw);
+    const parsed = parseLine(raw, knownTags);
 
     if (parsed.kind === "echo") return { type: "echo", message: parsed.message, err: true };
     if (parsed.kind === "help") {
@@ -781,14 +1307,15 @@ export function createTermEngine(options = {}) {
     if (parsed.kind === "clear") return { type: "clear" };
     if (parsed.kind === "lost") return { type: "navigate", post: EGG_POST, egg: true };
 
-    if (parsed.kind === "tag") {
-      if (!parsed.query) {
-        return { type: "echo", message: "usage: /tag <expr>   e.g.  /tag poe/ & (乌鸦 | 死亡) & !#draft", err: true };
-      }
+    if (parsed.kind === "find") {
+      if (!parsed.query) return { type: "echo", message: USAGE[parsed.cmd], err: true };
       const r = parseQuery(parsed.query);
-      if (!r.ok) return { type: "echo", message: formatQueryError(parsed.query, r.error), err: true };
-      if (!r.ast) return { type: "echo", message: "usage: /tag <expr>", err: true };
-      return { type: "search", query: parsed.query, href: searchHref(parsed.query) };
+      if (!r.ok) {
+        const shown = parsed.query === parsed.arg ? "" : "\n(as /find " + parsed.query + ")";
+        return { type: "echo", message: formatQueryError(parsed.query, r.error) + shown, err: true };
+      }
+      if (!r.ast) return { type: "echo", message: USAGE[parsed.cmd], err: true };
+      return { type: "search", cmd: parsed.cmd, query: parsed.query, href: searchHref(parsed.query) };
     }
 
     if (parsed.kind === "theme") {
@@ -802,14 +1329,7 @@ export function createTermEngine(options = {}) {
       return { type: "theme", name: parsed.name };
     }
 
-    if (parsed.kind === "about") {
-      if (parsed.query === null || !scrubInvisible(parsed.query).trim()) {
-        return { type: "echo", message: "usage: /about <query>  (semantic full-text)", err: true };
-      }
-      return { type: "about", query: scrubInvisible(parsed.query).trim() };
-    }
-
-    return { type: "echo", message: "command not found: " + line + "   (try /tag /about /theme /help)", err: true };
+    return { type: "echo", message: "command not found: " + line + "   (try /find /theme /help)", err: true };
   }
 
   return {

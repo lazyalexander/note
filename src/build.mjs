@@ -65,7 +65,7 @@ function termBarHtml() {
       <span class="prompt-label">$</span>
       <span class="term-field">
         <span class="term-ghost" id="term-ghost" aria-hidden="true"><span class="term-ghost-typed"></span><span class="term-ghost-rest"></span></span>
-        <input class="term-input" id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="/tag  /about  /theme  ·  Tab 补全  ·  Esc 关闭" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+        <input class="term-input" id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="/find  /theme  ·  Tab 补全  ·  Esc 关闭" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
       </span>
       <kbd class="term-kbd" aria-hidden="true">Esc</kbd>
     </label>
@@ -106,8 +106,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=36">
-<link rel="stylesheet" href="assets/code.css?v=36">
+<link rel="stylesheet" href="assets/style.css?v=37">
+<link rel="stylesheet" href="assets/code.css?v=37">
 </head>
 <body>
 ${termBarHtml()}
@@ -133,6 +133,7 @@ async function main() {
   const scrubSrc = await readFile(join(root, "src", "text-scrub.mjs"), "utf8");
   const tagSrc = await readFile(join(root, "src", "tag-match.mjs"), "utf8");
   const engSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
+  const aboutSrc = await readFile(join(root, "src", "about.mjs"), "utf8");
   const querySrc = await readFile(join(root, "src", "query.mjs"), "utf8");
   const cmdsSrc = await readFile(join(root, "src", "commands-list.mjs"), "utf8");
   const compSrc = await readFile(join(root, "src", "complete.mjs"), "utf8");
@@ -143,9 +144,10 @@ async function main() {
     return src.replace(/^export\s*\{[\s\S]*?\};\s*/m, "");
   }
   const engineBundle = [
-    "/** Auto-bundled from text-scrub + tag-match + query + commands-list + complete + term-engine. */",
+    "/** Auto-bundled from text-scrub + tag-match + about + query + commands-list + complete + term-engine. */",
     scrubSrc.trim(),
     stripImports(tagSrc).trim(),
+    stripImports(aboutSrc).trim(),
     stripImports(querySrc).trim(),
     stripImports(cmdsSrc).trim(),
     stripImports(compSrc).trim(),
@@ -155,7 +157,7 @@ async function main() {
   await writeFile(join(root, "assets", "term-engine.js"), engineBundle);
   await writeFile(join(distDir, "assets", "term-engine.js"), engineBundle);
   // Keep split sources in dist for debugging / egg raw view of entry.
-  for (const f of ["text-scrub.mjs", "tag-match.mjs", "query.mjs", "commands-list.mjs", "complete.mjs", "term-engine.mjs"]) {
+  for (const f of ["text-scrub.mjs", "tag-match.mjs", "about.mjs", "query.mjs", "commands-list.mjs", "complete.mjs", "term-engine.mjs"]) {
     await cp(join(root, "src", f), join(distDir, "assets", f));
   }
   // the two long-tracked split sources are also mirrored into assets/
@@ -215,14 +217,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=36"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=36"></script>`;
+<script type="module" src="assets/terminal.js?v=37"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=37"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=36" defer></script>
+<script src="assets/reader.js?v=37" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=36"></script>
+<script type="module" src="assets/search.js?v=37"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -331,7 +333,7 @@ ${railHtml(post)}
   const indexBody = `<div class="wrap home">
 <section class="hero">
   <pre class="banner" role="img" aria-label="Welcome!">${banner}</pre>
-  <p class="hero-sub">终端式的静态博客。按 <kbd>/</kbd> 唤出命令栏：<code>/tag</code> 搜索，<code>/about</code> 语义搜索，<code>/theme</code> 切换主题；<kbd>Space</kbd> 是 leader 键，<kbd>?</kbd> 查看全部快捷键；也可以看 <a href="posts/00-help/help.html">/help → 命令说明</a>。</p>
+  <p class="hero-sub">终端式的静态博客。按 <kbd>/</kbd> 唤出命令栏：<code>/find</code> 搜索（词、<code>tag:</code>、<code>grep:</code>、语义 <code>about:</code>），<code>/theme</code> 切换主题；<kbd>Space</kbd> 是 leader 键，<kbd>?</kbd> 查看全部快捷键；也可以看 <a href="posts/00-help/help.html">/help → 命令说明</a>。</p>
 </section>
 <div class="rail-label">目录 · ${seriesList.length} 个文件夹</div>
 ${seriesHtml}
@@ -344,8 +346,9 @@ ${seriesHtml}
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">
-  <p class="sr-prompt"><span class="sr-dollar">$</span> <span class="sr-cmd">/tag</span> <span class="sr-expr" id="sr-expr"></span></p>
+  <p class="sr-prompt"><span class="sr-dollar">$</span> <span class="sr-cmd">/find</span> <span class="sr-expr" id="sr-expr"></span></p>
   <p class="sr-summary" id="sr-summary">searching…</p>
+  <p class="sr-notes" id="sr-notes"></p>
 </section>
 <div id="sr-root"><noscript><p class="sr-empty">搜索需要 JavaScript。</p></noscript></div>
 <p class="footer">note // tui</p>

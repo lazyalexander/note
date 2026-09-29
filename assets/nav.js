@@ -241,7 +241,7 @@
     Object.keys(counts).sort().forEach(function (t) {
       items.push({ label: "#" + t, hint: counts[t] + " 篇", search: "tag " + t, run: function () { go("search.html?q=" + encodeURIComponent("#" + t)); } });
     });
-    openPicker("Tags & folders  →  /tag", items);
+    openPicker("Tags & folders  →  /find", items);
   }
   function pickHeading() {
     const hs = headings();
@@ -259,7 +259,7 @@
   let helpEl = null;
   const HELP = [
     ["Command bar", [["/  or  :", "open command bar"], ["Esc", "close menu, then bar"], ["Tab  or  →", "accept ghost completion"], ["↑ ↓  ^n ^p", "pick candidate"], ["Enter", "run line / chosen candidate"]]],
-    ["Leader  (Space)", [["Space f", "find article (fuzzy)"], ["Space s", "search:  /tag …"], ["Space t", "tags & folders picker"], ["Space o", "headings of this article"], ["Space a", "/about semantic search"], ["Space h", "home"], ["Space T", "cycle theme"], ["Space ?", "this help"]]],
+    ["Leader  (Space)", [["Space f", "find article (fuzzy)"], ["Space s", "search:  /find …"], ["Space t", "tags & folders picker"], ["Space o", "headings of this article"], ["Space a", "/find about:… semantic"], ["Space h", "home"], ["Space T", "cycle theme"], ["Space ?", "this help"]]],
     ["Jump", [["f", "flash: letter labels on headings / list items"], ["]]  [[", "next / previous heading"], ["H  L", "previous / next article in folder"]]],
     ["Scroll", [["j  k", "down / up ~3 lines (list pages: move cursor)"], ["^d  ^u", "half page down / up"], ["gg  G", "top / bottom"], ["Enter", "open item under cursor (list pages)"]]],
     ["Misc", [["?", "toggle this help"], ["Esc", "cancel / close overlay"]]],
@@ -289,10 +289,10 @@
   // ------------------------------------------------------------------ leader + which-key
   const LEADER = {
     f: ["find article", pickArticle],
-    s: ["search  /tag", function () { term().open("/tag "); }],
+    s: ["search  /find", function () { term().open("/find "); }],
     t: ["tags & folders", pickTag],
     o: ["headings (outline)", pickHeading],
-    a: ["/about semantic", function () { term().open("/about "); }],
+    a: ["semantic  about:", function () { term().open("/find about:"); }],
     h: ["home", function () { go(document.querySelector(".sl-brand").getAttribute("href")); }],
     T: ["cycle theme", function () { term().cycleTheme(); }],
     "?": ["help", showHelp],

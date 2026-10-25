@@ -66,15 +66,35 @@
   const scrollBy = function (dy) { scrollToY(dy, true); };
 
   // ------------------------------------------------------------------ list pages (home / search results)
-  function listItems() { return Array.prototype.slice.call(document.querySelectorAll("[data-nav]")); }
+  function listItems() {
+    return Array.from(document.querySelectorAll("[data-nav]")).filter(function (el) {
+      const folder = el.closest(".folder-group");
+      return !folder || folder.open || el.tagName === "SUMMARY";
+    });
+  }
+  function activateListItem(el) {
+    if (el.tagName === "SUMMARY") el.click();
+    else go(el.getAttribute("href"));
+  }
+  // Native mouse/keyboard toggles may remove the current article from the list.
+  document.addEventListener("toggle", function (e) {
+    if (!e.target.matches(".folder-group")) return;
+    const active = document.querySelector("[data-nav].nav-cursor");
+    if (!active) return;
+    const visible = listItems();
+    const index = visible.indexOf(active);
+    if (index >= 0) cursor = index;
+    else setCursor(visible.indexOf(e.target.querySelector("summary")));
+  }, true);
   let cursor = -1;
   function setCursor(i) {
     const items = listItems();
     if (!items.length) return;
     cursor = Math.max(0, Math.min(items.length - 1, i));
-    items.forEach(function (el, k) {
-      el.classList.toggle("nav-cursor", k === cursor);
-      if (k === cursor) el.setAttribute("aria-current", "true"); else el.removeAttribute("aria-current");
+    document.querySelectorAll("[data-nav]").forEach(function (el) {
+      const selected = el === items[cursor];
+      el.classList.toggle("nav-cursor", selected);
+      if (selected) el.setAttribute("aria-current", "true"); else el.removeAttribute("aria-current");
     });
     const el = items[cursor];
     const r = el.getBoundingClientRect();
@@ -87,7 +107,7 @@
   function openCursor() {
     const items = listItems();
     if (cursor < 0 || !items[cursor]) return false;
-    go(items[cursor].getAttribute("href"));
+    activateListItem(items[cursor]);
     return true;
   }
   const hasList = function () { return listItems().length > 0; };
@@ -339,7 +359,7 @@
         targets.push({ el: h, alt: a, run: function () { jumpHeading(h); } });
       });
     } else {
-      listItems().forEach(function (a) { targets.push({ el: a, alt: null, run: function () { go(a.getAttribute("href")); } }); });
+      listItems().forEach(function (a) { targets.push({ el: a, alt: null, run: function () { activateListItem(a); } }); });
     }
     const layer = document.createElement("div");
     layer.className = "flash-layer";
@@ -461,8 +481,8 @@
       if (p === "]" && k === "]") { e.preventDefault(); nextHeading(1); return; }
       if (p === "[" && k === "[") { e.preventDefault(); nextHeading(-1); return; }
     }
-    // A focused link/button keeps its native Enter / Space behaviour only for Enter; Space is our leader.
-    if (k === "Enter" && e.target && e.target !== document.body && e.target !== document.documentElement && /^(A|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
+    // Focused controls retain their native activation keys.
+    if ((k === "Enter" || k === " ") && e.target && e.target !== document.body && e.target !== document.documentElement && /^(A|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
 
     switch (k) {
       case "/": case ":":

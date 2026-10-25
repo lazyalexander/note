@@ -106,8 +106,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=37">
-<link rel="stylesheet" href="assets/code.css?v=37">
+<link rel="stylesheet" href="assets/style.css?v=38">
+<link rel="stylesheet" href="assets/code.css?v=38">
 </head>
 <body>
 ${termBarHtml()}
@@ -217,14 +217,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=37"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=37"></script>`;
+<script type="module" src="assets/terminal.js?v=38"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=38"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=37" defer></script>
+<script src="assets/reader.js?v=38" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=37"></script>
+<script type="module" src="assets/search.js?v=38"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -318,27 +318,28 @@ ${railHtml(post)}
 
   const seriesHtml = `<ul class="folders">${seriesList
     .map((s) => {
-      const first = s.posts[0];
       const desc = s.description ? `<span class="folder-desc">${escapeHtml(s.description)}</span>` : "";
-      return `<li><a class="folder" data-nav href="posts/${first.outName}"><span class="folder-icon" aria-hidden="true">▸</span><span class="folder-body"><span class="folder-name">${escapeHtml(s.title)}<span class="folder-dir">${escapeHtml(s.dir)}/</span></span>${desc}</span><span class="folder-count">${s.posts.length} 篇</span></a></li>`;
+      const articles = s.posts.map((p, i) => `<li><a class="home-post" data-nav href="posts/${p.outName}"><span class="home-post-number">${String(i + 1).padStart(2, "0")}</span><span class="home-post-title">${escapeHtml(p.title)}</span><span class="home-post-time">${p.minutes} 分钟</span></a></li>`).join("\n");
+      return `<li><details class="folder-group"><summary class="folder" data-nav><span class="folder-chevron" aria-hidden="true">›</span><span class="folder-body"><span class="folder-name">${escapeHtml(s.title)}</span>${desc}</span><span class="folder-count">${s.posts.length} 篇</span></summary><ul class="home-posts">${articles}</ul></details></li>`;
     })
     .join("\n")}</ul>`;
 
-  const banner = String.raw`██╗    ██╗███████╗██╗      ██████╗ ██████╗ ███╗   ███╗███████╗██╗
-██║    ██║██╔════╝██║     ██╔════╝██╔═══██╗████╗ ████║██╔════╝██║
-██║ █╗ ██║█████╗  ██║     ██║     ██║   ██║██╔████╔██║█████╗  ██║
-██║███╗██║██╔══╝  ██║     ██║     ██║   ██║██║╚██╔╝██║██╔══╝  ╚═╝
-╚███╔███╔╝███████╗███████╗╚██████╗╚██████╔╝██║ ╚═╝ ██║███████╗██╗
- ╚══╝╚══╝ ╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝`;
-  const indexBody = `<div class="wrap home">
+  const indexBody = `<main class="wrap home library">
 <section class="hero">
-  <pre class="banner" role="img" aria-label="Welcome!">${banner}</pre>
-  <p class="hero-sub">终端式的静态博客。按 <kbd>/</kbd> 唤出命令栏：<code>/find</code> 搜索（词、<code>tag:</code>、<code>grep:</code>、语义 <code>about:</code>），<code>/theme</code> 切换主题；<kbd>Space</kbd> 是 leader 键，<kbd>?</kbd> 查看全部快捷键；也可以看 <a href="posts/00-help/help.html">/help → 命令说明</a>。</p>
+  <p class="library-kicker">~/note <span>个人笔记</span></p>
+  <h1>留下一点想法。</h1>
+  <p class="hero-sub">写下、整理，再慢慢读。</p>
 </section>
-<div class="rail-label">目录 · ${seriesList.length} 个文件夹</div>
+<form class="home-search" action="search.html" method="get" role="search">
+  <label for="home-query">搜索笔记</label>
+  <div class="home-search-field"><span aria-hidden="true">⌕</span><input id="home-query" name="q" type="search" required placeholder="输入关键词、标题或 tag:标签" autocomplete="off"><button type="submit">搜索 <span aria-hidden="true">↗</span></button></div>
+  <p class="search-hint">支持全文与标签搜索；按 <kbd>/</kbd> 使用命令栏。</p>
+</form>
+<div class="library-heading"><h2>笔记目录</h2><span>${posts.length} 篇 · ${seriesList.length} 个文件夹</span></div>
 ${seriesHtml}
+<p class="library-help">展开文件夹，选择一篇开始阅读。<a href="posts/00-help/help.html">使用说明 ↗</a></p>
 <p class="footer">note // tui</p>
-</div>`;
+</main>`;
 
   await writeFile(
     join(distDir, "index.html"),

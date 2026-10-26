@@ -113,8 +113,9 @@ test("navigating lock + help", () => {
 
 test("/theme parses and returns theme action", () => {
   const e = createTermEngine({ posts: [] });
-  assert.deepEqual(e.submit("/theme paper"), { type: "theme", name: "paper" });
-  assert.deepEqual(e.submit("/theme auto"), { type: "theme", name: "auto" });
+  assert.deepEqual(e.submit("/theme day"), { type: "theme", name: "day" });
+  assert.deepEqual(e.submit("/theme tokyo"), { type: "theme", name: "tokyo" });
+  for (const old of ["auto", "paper", "ink"]) assert.equal(e.submit("/theme " + old).err, true);
   assert.equal(e.submit("/theme nope").type, "echo");
   assert.equal(e.submit("/theme").type, "echo");
 });
@@ -133,13 +134,13 @@ test("empty prompt is guidance; invalid commands and themes offer a recovery pat
   assert.match(e.submit("/").message, /\/find/);
   assert.match(e.submit("/oops").message, /未知命令/);
   assert.match(e.submit("/theme missing").message, /未知主题/);
-  assert.match(e.submit("/theme missing").message, /paper（白天）/);
+  assert.match(e.submit("/theme missing").message, /day（白天）/);
   assert.match(e.submit("/find").message, /用法/);
 });
 
 test("full-width IME command names normalize without changing the query literal", () => {
   const e = createTermEngine();
   assert.equal(e.submit("／ｆｉｎｄ　猫").query, "猫");
-  assert.equal(e.submit("／ｔｈｅｍｅ　ｐａｐｅｒ").name, "paper");
+  assert.equal(e.submit("／ｔｈｅｍｅ　ｄａｙ").name, "day");
   assert.equal(parseLine('/find "ＡＢＣ"').arg, '"ＡＢＣ"');
 });

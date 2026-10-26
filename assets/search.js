@@ -1,4 +1,4 @@
-import { searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=39";
+import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=40";
 
 /**
  * Client-rendered /find result page: search.html?q=<expr>, grouped by folder.
@@ -13,7 +13,14 @@ import { searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, 
   const notesEl = document.getElementById("sr-notes");
   if (!root) return;
 
-  const q = new URLSearchParams(location.search).get("q") || "";
+  const rawQuery = new URLSearchParams(location.search).get("q") || "";
+  const knownTags = [...new Set((window.__POSTS__ || []).flatMap((p) => p.tags || []))];
+  const q = normalizeSearchInput(rawQuery, knownTags);
+  if (q !== rawQuery) {
+    const url = new URL(location.href);
+    url.searchParams.set("q", q);
+    history.replaceState(null, "", url);
+  }
   exprEl.textContent = q;
   document.title = q ? "/find " + q + " · note" : "search · note";
   root.dataset.state = "loading";
@@ -41,7 +48,7 @@ import { searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, 
 
   let aboutMod = null;
   function loadAbout() {
-    if (!aboutMod) aboutMod = import("./about-search.js?v=39");
+    if (!aboutMod) aboutMod = import("./about-search.js?v=40");
     return aboutMod;
   }
 

@@ -10,7 +10,7 @@ const ctx = {
   ],
   tags: ["fiction", "help", "js", "poe", "恐怖"],
   posts: [{ title: "The Raven", dir: "02-poe", stem: "02-poe/1" }, { title: "The Tell-Tale Heart", dir: "02-poe", stem: "02-poe/2" }],
-  history: ["/tag poe/ raven", "/theme paper"],
+  history: ["/tag poe/ raven", "/theme day"],
 };
 const texts = (l) => complete(l, ctx).items.map((i) => i.text);
 
@@ -57,9 +57,9 @@ test("/tag: works after operators and parens", () => {
 });
 
 test("/theme names", () => {
-  assert.equal(texts("/theme p")[0], "/theme paper");
-  assert.equal(complete("/theme p", ctx).items[0].exec, true);
-  assert.equal(complete("/theme in", ctx).ghost, "k");
+  assert.equal(texts("/theme d")[0], "/theme day");
+  assert.equal(complete("/theme d", ctx).items[0].exec, true);
+  assert.equal(complete("/theme to", ctx).ghost, "kyo");
 });
 
 test("history is last and prefix-matched", () => {

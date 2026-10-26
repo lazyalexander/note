@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 import hljs from "highlight.js";
 import { loadContent } from "./content.mjs";
+import { resolveTheme } from "./themes.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -85,7 +86,7 @@ function statuslineHtml() {
   <span class="sl-pending" id="sl-pending"></span>
   <span class="sl-msg" id="sl-msg" role="status" aria-live="polite"></span>
   <span class="sl-spacer"></span>
-  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换主题" title="切换主题（Space T · 自动 / paper / tokyo / ink）">◐</button>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换主题" title="切换主题（Space T · day / tokyo）">◐</button>
   <button class="sl-btn" id="sl-cmd" type="button" title="打开命令栏"><kbd>/</kbd> 命令</button>
   <button class="sl-btn" id="sl-help" type="button" title="快捷键"><kbd>?</kbd> 帮助</button>
 </footer>`;
@@ -103,12 +104,12 @@ function layout({ title, body, back, scripts, wide }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <base href="${baseHref}">
 <title>${escapeHtml(title)}</title>
-<script>(function(){function pick(){var m="auto";try{m=localStorage.getItem("note-theme")||"auto"}catch(e){}var t=m;if(m==="auto"){var h=new Date().getHours();t=(h>=6&&h<18)?"paper":"tokyo"}return{mode:m,theme:t}}
-window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
+<script>(function(){var resolve=${resolveTheme.toString()};
+window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=39">
-<link rel="stylesheet" href="assets/code.css?v=39">
+<link rel="stylesheet" href="assets/style.css?v=40">
+<link rel="stylesheet" href="assets/code.css?v=40">
 </head>
 <body>
 ${termBarHtml()}
@@ -131,6 +132,7 @@ async function main() {
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
+  const themesSrc = await readFile(join(root, "src", "themes.mjs"), "utf8");
   const scrubSrc = await readFile(join(root, "src", "text-scrub.mjs"), "utf8");
   const tagSrc = await readFile(join(root, "src", "tag-match.mjs"), "utf8");
   const engSrc = await readFile(join(root, "src", "term-engine.mjs"), "utf8");
@@ -146,6 +148,7 @@ async function main() {
   }
   const engineBundle = [
     "/** Auto-bundled from text-scrub + tag-match + about + query + commands-list + complete + term-engine. */",
+    themesSrc.trim(),
     scrubSrc.trim(),
     stripImports(tagSrc).trim(),
     stripImports(aboutSrc).trim(),
@@ -158,7 +161,7 @@ async function main() {
   await writeFile(join(root, "assets", "term-engine.js"), engineBundle);
   await writeFile(join(distDir, "assets", "term-engine.js"), engineBundle);
   // Keep split sources in dist for debugging / egg raw view of entry.
-  for (const f of ["text-scrub.mjs", "tag-match.mjs", "about.mjs", "query.mjs", "commands-list.mjs", "complete.mjs", "term-engine.mjs"]) {
+  for (const f of ["themes.mjs", "text-scrub.mjs", "tag-match.mjs", "about.mjs", "query.mjs", "commands-list.mjs", "complete.mjs", "term-engine.mjs"]) {
     await cp(join(root, "src", f), join(distDir, "assets", f));
   }
   // the two long-tracked split sources are also mirrored into assets/
@@ -218,14 +221,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=39"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=39"></script>`;
+<script type="module" src="assets/terminal.js?v=40"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=40"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=39" defer></script>
+<script src="assets/reader.js?v=40" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=39"></script>
+<script type="module" src="assets/search.js?v=40"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -334,7 +337,7 @@ ${railHtml(post)}
 <form class="home-search" action="search.html" method="get" role="search">
   <label for="home-query">搜索笔记</label>
   <div class="home-search-field"><span aria-hidden="true">⌕</span><input id="home-query" name="q" type="search" required placeholder="输入关键词、标题或 tag:标签" autocomplete="off"><button type="submit">搜索 <span aria-hidden="true">↗</span></button></div>
-  <p class="search-hint">支持全文与标签搜索；按 <kbd>/</kbd> 使用命令栏。</p>
+  <p class="search-hint">直接输入关键词或 /find 关键词；按 <kbd>/</kbd> 使用命令栏。</p>
 </form>
 <div class="library-heading"><h2>笔记目录</h2><span>${posts.length} 篇 · ${seriesList.length} 个文件夹</span></div>
 ${seriesHtml}

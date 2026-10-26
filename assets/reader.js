@@ -161,5 +161,4 @@
   };
   var top = document.querySelector(".back-to-top");
   if (top) top.addEventListener("click", function (e) { e.preventDefault(); userScroll(); window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }); });
-  setInterval(function () { if (window.__applyTheme) window.__applyTheme(); }, 300000);
 })();

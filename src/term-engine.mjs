@@ -2,11 +2,13 @@
 import { scrubInvisible, codepointsHex, normalizeTag } from "./text-scrub.mjs";
 import { postTags, tagAtomMatches } from "./tag-match.mjs";
 import { parseQuery, formatQueryError, cleanExpr, searchDocs, searchDocsAsync, makeSnippet, highlightParts, hasAbout, grepMatchLines, makeResultView } from "./query.mjs";
+import { THEME_NAMES } from "./themes.mjs";
 import { complete } from "./complete.mjs";
 import { scoreEmbeddings, selectAbout, dynamicCount } from "./about.mjs";
 import { COMMANDS_LIST } from "./commands-list.mjs";
 
 export {
+  THEME_NAMES,
   parseQuery,
   formatQueryError,
   cleanExpr,
@@ -37,7 +39,7 @@ export const EGG_POST = {
   tags: [],
 };
 
-export const THEMES = ["auto", "tokyo", "paper", "ink"];
+export const THEMES = THEME_NAMES;
 
 export const COMMANDS = COMMANDS_LIST;
 
@@ -119,6 +121,12 @@ export function parseLine(raw, knownTags) {
   return { kind: "other", text: line };
 }
 
+/** Accept the same search syntax in the home field and command bar. Regex literals remain intact. */
+export function normalizeSearchInput(raw, knownTags) {
+  const parsed = parseLine(raw, knownTags);
+  return parsed.kind === "find" ? parsed.query : String(raw || "");
+}
+
 const USAGE = {
   find: "用法：/find 关键词，例如 /find 心跳 或 /find tag:poe",
   tag: "用法：/tag 标签，例如 /tag meta（等同 /find tag:meta）",
@@ -183,7 +191,7 @@ export function createTermEngine(options = {}) {
       if (!parsed.name || !THEMES.includes(parsed.name)) {
         return {
           type: "echo",
-          message: (parsed.name ? "未知主题：" + parsed.name + "。\n" : "") + "用法：/theme paper（白天）| tokyo（夜间）| ink（深色）| auto（自动）",
+          message: (parsed.name ? "未知主题：" + parsed.name + "。\n" : "") + "用法：/theme day（白天）| tokyo（夜间）",
           err: !!parsed.name,
         };
       }

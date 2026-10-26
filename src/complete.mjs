@@ -10,8 +10,7 @@
 import { COMMANDS_LIST } from "./commands-list.mjs";
 
 export const MAX_ITEMS = 12;
-export const THEME_NAMES = ["auto", "paper", "tokyo", "ink"];
-const THEME_HINTS = { auto: "自动 · 06–18 点白天，其余夜间", paper: "白天 · 暖纸色", tokyo: "夜间 · 紫色终端", ink: "夜间 · 深色阅读" };
+import { THEME_NAMES, THEME_HINTS } from "./themes.mjs";
 
 /** Term prefixes offered inside a /find expression: [text, hint]. */
 export const TERM_PREFIXES = [

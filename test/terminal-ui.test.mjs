@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
-import { createTermEngine, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError } from "../src/term-engine.mjs";
+import { createTermEngine, THEME_NAMES, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError } from "../src/term-engine.mjs";
 
 // Exercise the real terminal event handlers without a browser or an OS keyboard layout.
 const source = (await readFile(new URL("../assets/terminal.js", import.meta.url), "utf8"))
@@ -43,7 +43,7 @@ function terminal() {
     CustomEvent: class {},
     setTimeout: (fn) => { timers.set(++id, fn); return id; }, clearTimeout: (id) => timers.delete(id),
     fetch: async () => ({ ok: true, json: async () => ({ docs: [] }) }),
-    complete, searchDocs, hasAbout, scrubInvisible, formatQueryError,
+    THEME_NAMES, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError,
     createTermEngine: (options) => {
       const engine = createTermEngine(options), submit = engine.submit;
       engine.submit = (line) => { submitted.push(line); return submit(line); };
@@ -92,7 +92,7 @@ test("errors preserve input, close suggestions, survive index loading and clear 
   assert.equal(ui.suggest.hidden, true);
   await new Promise(setImmediate);
   assert.match(echo.textContent, /未知主题/);
-  input.value = "/theme paper";
+  input.value = "/theme day";
   input.fire("input");
   assert.equal(input.attrs["aria-invalid"], "false");
   assert.equal(echo.hidden, true);

@@ -1,5 +1,13 @@
 /** Auto-bundled from text-scrub + tag-match + about + query + commands-list + complete + term-engine. */
 
+export const THEME_NAMES = ["day", "tokyo"];
+export const THEME_HINTS = { day: "白天 · 暖纸色", tokyo: "夜间 · 紫色终端" };
+
+// Migrate saved preferences; removed modes never remain active.
+export function resolveTheme(value) {
+  return value === "day" || value === "paper" ? "day" : "tokyo";
+}
+
 /** IME / Unicode cleanup helpers for the note TUI. */
 
 /**
@@ -928,7 +936,7 @@ export const COMMANDS_LIST = [
   { name: "/tag", args: true, desc: "= /find（/tag js → tag:js）" },
   { name: "/about", args: true, desc: "= /find about:…（语义，可加 :top-N）" },
   { name: "/grep", args: true, desc: "= /find grep:…（按行匹配）" },
-  { name: "/theme", args: true, desc: "auto | paper | tokyo | ink" },
+  { name: "/theme", args: true, desc: "day（白天）| tokyo（夜间）" },
   { name: "/help", args: false, desc: "打开命令说明" },
   { name: "/clear", args: false, desc: "清空输入与提示" },
 ];
@@ -943,9 +951,6 @@ export const COMMANDS_LIST = [
  *   exec: Enter on this item also runs the resulting line (false → only fills the line in, e.g. "/tag " needs arguments)
  */
 export const MAX_ITEMS = 12;
-export const THEME_NAMES = ["auto", "paper", "tokyo", "ink"];
-const THEME_HINTS = { auto: "自动 · 06–18 点白天，其余夜间", paper: "白天 · 暖纸色", tokyo: "夜间 · 紫色终端", ink: "夜间 · 深色阅读" };
-
 /** Term prefixes offered inside a /find expression: [text, hint]. */
 export const TERM_PREFIXES = [
   ["tag:", "标签（同 #tag）"],
@@ -1178,7 +1183,7 @@ export const EGG_POST = {
   tags: [],
 };
 
-export const THEMES = ["auto", "tokyo", "paper", "ink"];
+export const THEMES = THEME_NAMES;
 
 export const COMMANDS = COMMANDS_LIST;
 
@@ -1260,6 +1265,12 @@ export function parseLine(raw, knownTags) {
   return { kind: "other", text: line };
 }
 
+/** Accept the same search syntax in the home field and command bar. Regex literals remain intact. */
+export function normalizeSearchInput(raw, knownTags) {
+  const parsed = parseLine(raw, knownTags);
+  return parsed.kind === "find" ? parsed.query : String(raw || "");
+}
+
 const USAGE = {
   find: "用法：/find 关键词，例如 /find 心跳 或 /find tag:poe",
   tag: "用法：/tag 标签，例如 /tag meta（等同 /find tag:meta）",
@@ -1324,7 +1335,7 @@ export function createTermEngine(options = {}) {
       if (!parsed.name || !THEMES.includes(parsed.name)) {
         return {
           type: "echo",
-          message: (parsed.name ? "未知主题：" + parsed.name + "。\n" : "") + "用法：/theme paper（白天）| tokyo（夜间）| ink（深色）| auto（自动）",
+          message: (parsed.name ? "未知主题：" + parsed.name + "。\n" : "") + "用法：/theme day（白天）| tokyo（夜间）",
           err: !!parsed.name,
         };
       }

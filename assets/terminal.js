@@ -1,11 +1,12 @@
 import {
   createTermEngine,
+  THEME_NAMES,
   complete,
   formatQueryError,
   searchDocs,
   hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=39";
+} from "./term-engine.js?v=40";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -28,7 +29,7 @@ import {
 
   const engine = createTermEngine({ posts });
   const HISTORY_KEY = "note-cmd-history";
-  const THEME_ORDER = ["auto", "paper", "tokyo", "ink"];
+  const THEME_ORDER = THEME_NAMES;
 
   let items = [];          // menu entries
   let selected = -1;       // -1 = nothing chosen: Enter runs the typed line
@@ -57,7 +58,9 @@ import {
   function loadHistory() {
     try {
       const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-      return Array.isArray(h) ? h.filter(function (x) { return typeof x === "string"; }).slice(0, 40) : [];
+      return Array.isArray(h) ? h.filter(function (x) {
+        return typeof x === "string" && !/^\/?theme\s+(auto|paper|ink)$/i.test(x.trim());
+      }).slice(0, 40) : [];
     } catch (e) { return []; }
   }
   function remember(line) {
@@ -201,8 +204,7 @@ import {
     notify("theme · " + name);
   }
   function cycleTheme() {
-    let cur = "auto";
-    try { cur = localStorage.getItem("note-theme") || "auto"; } catch (e) {}
+    const cur = document.documentElement.getAttribute("data-theme") || "tokyo";
     setTheme(THEME_ORDER[(THEME_ORDER.indexOf(cur) + 1) % THEME_ORDER.length]);
   }
 
@@ -374,7 +376,7 @@ import {
   });
 
   // Warm the embeddings index + e5 model in the background so the first about: term is snappy.
-  import("./about-search.js?v=39")
+  import("./about-search.js?v=40")
     .then(function (mod) { if (mod && typeof mod.ensureAboutReady === "function") return mod.ensureAboutReady(null); })
     .catch(function () {});
 

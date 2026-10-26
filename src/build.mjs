@@ -59,8 +59,7 @@ function href(path) {
 }
 
 function searchFieldHtml(id, feedbackId) {
-  const icon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>`;
-  return `<div class="home-search-field"><span class="search-icon">${icon}</span><input id="${id}" aria-describedby="${feedbackId}" name="q" type="search" enterkeyhint="search" required placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button type="submit" aria-label="搜索笔记" title="搜索笔记">${icon}</button></div>`;
+  return `<div class="search-box"><div class="home-search-field"><span aria-hidden="true">⌕</span><input id="${id}" aria-describedby="${feedbackId}" name="q" type="search" enterkeyhint="search" required placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button class="search-clear" type="button" aria-label="清空搜索" hidden>×</button><button type="submit">搜索 <span aria-hidden="true">↗</span></button></div></div>`;
 }
 
 function termBarHtml() {
@@ -113,8 +112,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=43">
-<link rel="stylesheet" href="assets/code.css?v=43">
+<link rel="stylesheet" href="assets/style.css?v=44">
+<link rel="stylesheet" href="assets/code.css?v=44">
 </head>
 <body>
 ${termBarHtml()}
@@ -125,6 +124,7 @@ ${body}
 </div>`}
 ${statuslineHtml()}
 ${scriptTags}
+<script type="module" src="assets/search-box.js?v=44"></script>
 </body>
 </html>
 `;
@@ -144,6 +144,7 @@ async function main() {
   const aboutSrc = await readFile(join(root, "src", "about.mjs"), "utf8");
   const querySrc = await readFile(join(root, "src", "query.mjs"), "utf8");
   const cmdsSrc = await readFile(join(root, "src", "commands-list.mjs"), "utf8");
+  const searchSuggestionsSrc = await readFile(join(root, "src", "search-suggestions.mjs"), "utf8");
   const compSrc = await readFile(join(root, "src", "complete.mjs"), "utf8");
   function stripImports(src) {
     return src.replace(/^import\s+[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "");
@@ -160,6 +161,7 @@ async function main() {
     stripImports(querySrc).trim(),
     stripImports(cmdsSrc).trim(),
     stripImports(compSrc).trim(),
+    stripImports(searchSuggestionsSrc).trim(),
     stripReexport(stripImports(engSrc)).trim(),
     "",
   ].join("\n\n");
@@ -174,6 +176,7 @@ async function main() {
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
   await cp(join(root, "assets", "reader.js"), join(distDir, "assets", "reader.js"));
   await cp(join(root, "assets", "nav.js"), join(distDir, "assets", "nav.js"));
+  await cp(join(root, "assets", "search-box.js"), join(distDir, "assets", "search-box.js"));
   await cp(join(root, "assets", "search.js"), join(distDir, "assets", "search.js"));
   await cp(join(root, "assets", "about-search.js"), join(distDir, "assets", "about-search.js"));
   await cp(join(root, "assets", "embeddings.json"), join(distDir, "assets", "embeddings.json"));
@@ -226,14 +229,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=43"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=43"></script>`;
+<script type="module" src="assets/terminal.js?v=44"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=44"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=43" defer></script>
+<script src="assets/reader.js?v=44" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=43"></script>
+<script type="module" src="assets/search.js?v=44"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");

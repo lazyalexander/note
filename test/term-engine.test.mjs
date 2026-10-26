@@ -126,3 +126,20 @@ test("/about needs a query; multi-word queries get quoted", () => {
   assert.equal(r.type, "search");
   assert.equal(r.query, 'about:"black cat"');
 });
+
+test("empty prompt is guidance; invalid commands and themes offer a recovery path", () => {
+  const e = createTermEngine();
+  assert.equal(e.submit("/").err, false);
+  assert.match(e.submit("/").message, /\/find/);
+  assert.match(e.submit("/oops").message, /未知命令/);
+  assert.match(e.submit("/theme missing").message, /未知主题/);
+  assert.match(e.submit("/theme missing").message, /paper（白天）/);
+  assert.match(e.submit("/find").message, /用法/);
+});
+
+test("full-width IME command names normalize without changing the query literal", () => {
+  const e = createTermEngine();
+  assert.equal(e.submit("／ｆｉｎｄ　猫").query, "猫");
+  assert.equal(e.submit("／ｔｈｅｍｅ　ｐａｐｅｒ").name, "paper");
+  assert.equal(parseLine('/find "ＡＢＣ"').arg, '"ＡＢＣ"');
+});

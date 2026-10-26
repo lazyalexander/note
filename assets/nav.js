@@ -431,7 +431,7 @@
   }
 
   document.addEventListener("keydown", function (e) {
-    if (e.defaultPrevented || e.isComposing) return;
+    if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
     if (typing(e.target)) return;
     if (term() && term().isOpen()) return;
     if (e.metaKey || e.altKey) return;

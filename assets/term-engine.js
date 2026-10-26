@@ -944,6 +944,7 @@ export const COMMANDS_LIST = [
  */
 export const MAX_ITEMS = 12;
 export const THEME_NAMES = ["auto", "paper", "tokyo", "ink"];
+const THEME_HINTS = { auto: "自动 · 06–18 点白天，其余夜间", paper: "白天 · 暖纸色", tokyo: "夜间 · 紫色终端", ink: "夜间 · 深色阅读" };
 
 /** Term prefixes offered inside a /find expression: [text, hint]. */
 export const TERM_PREFIXES = [
@@ -1041,7 +1042,7 @@ export function complete(line, ctx = {}) {
       const w = low(rest.trim());
       for (const t of THEME_NAMES) {
         if (t.startsWith(w) && !/\s/.test(rest.trim())) {
-          push(items, seen, { kind: "theme", label: t, hint: "theme", text: head + t, exec: true });
+          push(items, seen, { kind: "theme", label: t, hint: THEME_HINTS[t], text: head + t, exec: true });
         }
       }
     }
@@ -1235,7 +1236,7 @@ export function parseLine(raw, knownTags) {
   const line = scrubInvisible(raw).trim();
   if (/^\/?help$/i.test(line)) return { kind: "help" };
   // find-family commands keep the raw text: the query parser handles full-width operators itself.
-  let m = stripCf(raw).match(/^\/?(find|tag|about|grep)(?:\s+([\s\S]*))?$/i);
+  let m = stripCf(raw).replace(/^\S+/, (command) => scrubInvisible(command)).match(/^\/?(find|tag|about|grep)(?:\s+([\s\S]*))?$/i);
   if (m) {
     const cmd = m[1].toLowerCase();
     const arg = m[2] == null ? "" : m[2].trim();
@@ -1260,10 +1261,10 @@ export function parseLine(raw, knownTags) {
 }
 
 const USAGE = {
-  find: "usage: /find <expr>   e.g.  /find poe/ & (乌鸦 | about:死亡:top-2) & !#draft",
-  tag: "usage: /tag <expr>   (sugar for /find — /tag js = /find tag:js)",
-  about: "usage: /about <query>[:top-N | :bottom-N]   e.g.  /about dark:top-3   (= /find about:dark:top-3)",
-  grep: "usage: /grep <pattern>   e.g.  /grep raven   /grep /rav.n/i   (= /find grep:…)",
+  find: "用法：/find 关键词，例如 /find 心跳 或 /find tag:poe",
+  tag: "用法：/tag 标签，例如 /tag meta（等同 /find tag:meta）",
+  about: "用法：/about 描述，例如 /about 死亡:top-3",
+  grep: "用法：/grep 关键词或正则，例如 /grep raven 或 /grep /rav.n/i",
 };
 
 export function findPostByStem(posts, stem) {
@@ -1296,12 +1297,13 @@ export function createTermEngine(options = {}) {
   function submit(raw) {
     const line = scrubInvisible(raw).trim();
     if (!line) return { type: "noop" };
+    if (line === "/" || line === ":") return { type: "echo", message: "输入 /find 关键词 搜索笔记，或 /help 查看命令说明。", err: false };
     const parsed = parseLine(raw, knownTags);
 
     if (parsed.kind === "echo") return { type: "echo", message: parsed.message, err: true };
     if (parsed.kind === "help") {
       const post = findHelpPost(posts);
-      if (!post) return { type: "echo", message: "help post not found", err: true };
+      if (!post) return { type: "echo", message: "未找到命令说明文章。", err: true };
       return { type: "navigate", post };
     }
     if (parsed.kind === "clear") return { type: "clear" };
@@ -1312,7 +1314,7 @@ export function createTermEngine(options = {}) {
       const r = parseQuery(parsed.query);
       if (!r.ok) {
         const shown = parsed.query === parsed.arg ? "" : "\n(as /find " + parsed.query + ")";
-        return { type: "echo", message: formatQueryError(parsed.query, r.error) + shown, err: true };
+        return { type: "echo", message: "表达式有误 · " + formatQueryError(parsed.query, r.error) + shown + "\n请修改标记处后重试；/help 可查看语法。", err: true };
       }
       if (!r.ast) return { type: "echo", message: USAGE[parsed.cmd], err: true };
       return { type: "search", cmd: parsed.cmd, query: parsed.query, href: searchHref(parsed.query) };
@@ -1322,14 +1324,14 @@ export function createTermEngine(options = {}) {
       if (!parsed.name || !THEMES.includes(parsed.name)) {
         return {
           type: "echo",
-          message: "usage: /theme " + THEMES.join(" | ") + "  (auto=白天paper/晚上tokyo)",
+          message: (parsed.name ? "未知主题：" + parsed.name + "。\n" : "") + "用法：/theme paper（白天）| tokyo（夜间）| ink（深色）| auto（自动）",
           err: !!parsed.name,
         };
       }
       return { type: "theme", name: parsed.name };
     }
 
-    return { type: "echo", message: "command not found: " + line + "   (try /find /theme /help)", err: true };
+    return { type: "echo", message: "未知命令：" + line + "\n可用命令：/find 搜索 · /theme 主题 · /help 说明。搜索文字请写成 /find " + line, err: true };
   }
 
   return {

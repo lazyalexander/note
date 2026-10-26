@@ -1,10 +1,11 @@
 import {
   createTermEngine,
   complete,
+  formatQueryError,
   searchDocs,
   hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=37";
+} from "./term-engine.js?v=39";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -35,6 +36,7 @@ import {
   let ghost = "";
   let menuClosed = false;  // first Esc closes the menu only
   let composing = false;
+  let compositionTimer = 0;
   let isOpen = false;
   let msgTimer = 0;
   let indexPromise = null;
@@ -69,6 +71,7 @@ import {
   function setEcho(msg, isErr) {
     echo.textContent = msg || "";
     echo.classList.toggle("err", !!isErr);
+    input.setAttribute("aria-invalid", isErr ? "true" : "false");
     echo.hidden = !msg;
   }
   /** Feedback that survives the bar being hidden: statusline message (+ echo when the bar is open). */
@@ -84,14 +87,14 @@ import {
 
   // ---------------------------------------------------------------- menu
   function renderGhost() {
-    const showGhost = ghost && !composing && isOpen && input.selectionStart === input.value.length && input.scrollWidth <= input.clientWidth + 1;
+    const showGhost = ghost && !menuClosed && !composing && isOpen && input.selectionStart === input.value.length && input.scrollWidth <= input.clientWidth + 1;
     ghostTyped.textContent = showGhost ? input.value : "";
     ghostRest.textContent = showGhost ? ghost : "";
   }
 
   function renderMenu() {
     suggest.innerHTML = "";
-    const show = items.length && !menuClosed && isOpen;
+    const show = items.length && !menuClosed && isOpen && !composing;
     suggest.hidden = !show;
     suggest.classList.toggle("open", !!show);
     input.setAttribute("aria-expanded", show ? "true" : "false");
@@ -144,18 +147,23 @@ import {
       indexPromise = fetch("search-index.json")
         .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then(function (j) { docs = j.docs || []; refreshLive(); return docs; })
-        .catch(function () { indexPromise = null; });
+        .catch(function () {
+          indexPromise = null;
+          if (isOpen && !composing && echo.dataset.live === "1" && engine.parseLine(input.value).kind === "find") {
+            setEcho("暂时无法加载搜索索引，请检查连接后重试。", true);
+          }
+        });
     }
     return indexPromise;
   }
   function refreshLive() {
-    if (!isOpen) return;
+    if (!isOpen || composing || echo.dataset.live !== "1") return;
     const p = engine.parseLine(input.value);
     if (p.kind === "find" && p.query) {
       if (!docs) { ensureIndex(); return; }
       const r = searchDocs(docs, p.query);
       const rewritten = p.query !== p.arg ? "= /find " + p.query + " · " : "";
-      if (!r.ok) setEcho("");
+      if (!r.ok) setEcho("表达式有误 · " + formatQueryError(p.query, r.error), true);
       else if (r.empty) setEcho("");
       else if (hasAbout(r.ast)) setEcho(rewritten + "含语义项 about: · Enter 查看结果页（首次需加载模型）");
       else setEcho(rewritten + r.results.length + " 篇匹配 · Enter 查看结果页");
@@ -200,7 +208,12 @@ import {
 
   function applyAction(action, line) {
     if (!action || action.type === "noop") return;
-    if (action.type === "echo") { setEcho(action.message, !!action.err); return; }
+    if (action.type === "echo") {
+      echo.dataset.live = "0";
+      setEcho(action.message, !!action.err);
+      if (action.err) { menuClosed = true; selected = -1; renderMenu(); renderGhost(); }
+      return;
+    }
     if (action.type === "clear") { input.value = ""; refresh(); return; }
     if (action.type === "theme") {
       remember(line);
@@ -215,7 +228,7 @@ import {
   }
 
   function submitLine() {
-    if (composing && !input.isComposing) composing = false;
+    if (composing) return;
     const line = input.value;
     applyAction(engine.submit(line), line.trim());
   }
@@ -298,15 +311,24 @@ import {
     if (document.visibilityState === "visible") reviveAfterHistory();
   });
 
-  input.addEventListener("compositionstart", function () { composing = true; renderGhost(); });
+  input.addEventListener("compositionstart", function () {
+    clearTimeout(compositionTimer);
+    composing = true;
+    selected = -1;
+    setEcho("");
+    renderMenu(); renderGhost();
+  });
   input.addEventListener("compositionend", function () {
     // Defer one tick so the committed characters are in input.value (Safari).
-    setTimeout(function () { composing = false; refresh(); }, 0);
+    clearTimeout(compositionTimer);
+    compositionTimer = setTimeout(function () { composing = false; refresh(); }, 0);
   });
-  input.addEventListener("blur", function () { composing = false; });
-  input.addEventListener("input", function (e) {
-    if (e && e.isComposing) return;
+  input.addEventListener("blur", function () {
+    clearTimeout(compositionTimer);
     composing = false;
+  });
+  input.addEventListener("input", function (e) {
+    if (composing || (e && e.isComposing)) return;
     refresh();
   });
   input.addEventListener("click", renderGhost);
@@ -315,8 +337,9 @@ import {
   });
 
   input.addEventListener("keydown", function (e) {
-    // Real IME busy = browser says so; never gate on keyCode 229 or a sticky flag.
-    if (e.isComposing || (composing && e.key !== "Enter")) return;
+    // Safari may clear isComposing before the candidate-confirmation Enter.
+    // Keep ownership through compositionend's tick, including the legacy 229 signal.
+    if (e.isComposing || composing || e.keyCode === 229) return;
     const k = e.key;
     const ctrl = e.ctrlKey && !e.metaKey && !e.altKey;
 
@@ -351,7 +374,7 @@ import {
   });
 
   // Warm the embeddings index + e5 model in the background so the first about: term is snappy.
-  import("./about-search.js?v=37")
+  import("./about-search.js?v=39")
     .then(function (mod) { if (mod && typeof mod.ensureAboutReady === "function") return mod.ensureAboutReady(null); })
     .catch(function () {});
 

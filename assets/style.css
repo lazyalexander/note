@@ -933,3 +933,32 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
 @media (prefers-reduced-motion: reduce) {
   .folder-chevron { transition: none; }
 }
+
+/* Command feedback stays legible in both day and night themes. */
+.term-hint { margin: 0; padding: 0.45rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg-dim); font-size: 0.75rem; }
+.term-bar .term-echo { max-height: 35dvh; overflow: auto; overflow-wrap: anywhere; }
+.term-bar .term-echo.err { color: var(--red); border-color: var(--red); }
+.term-bar .suggest { max-height: min(20rem, 45dvh); }
+:root { color-scheme: dark; }
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #faf8f3; --bg-elev: #fffdf8; --bg-hl: #eeebe3;
+  --fg: #292620; --fg-dim: #514b43; --comment: #6f675f;
+  --border: #d9d3c8; --code: #f0ece4; --sel: #eee7f7;
+  --eva-purple: #674699; --eva-purple-dim: #b4a0ce;
+  --eva-green: #397500; --eva-orange: #a04b12; --eva-blue: #245f9f;
+}
+:root[data-theme="paper"] .term-bar { background: var(--bg); backdrop-filter: none; }
+:root[data-theme="paper"] .term-bar .term-line,
+:root[data-theme="paper"] .term-bar .term:focus-within,
+:root[data-theme="paper"] .term-bar .term-input:focus-within { box-shadow: none; }
+:root[data-theme="paper"] .term-bar .term-line { background: var(--bg-elev); border-color: var(--eva-purple); }
+:root[data-theme="paper"] .term-ghost-rest { color: var(--comment); opacity: 1; }
+:root[data-theme="paper"] .suggest-item.active { background: var(--sel); border-left-color: var(--eva-purple); }
+:root[data-theme="paper"] .suggest-item.active .suggest-title { color: var(--eva-purple); }
+@media (max-width: 600px) {
+  .term-bar .term-input, .term-ghost { font-size: 16px; }
+  .term-hint { font-size: 0.72rem; }
+  .suggest-item { flex-wrap: wrap; gap: 0.2rem 0.5rem; }
+  .suggest-item .suggest-stem { flex-basis: 100%; max-width: 100%; padding-left: 4.8em; white-space: normal; overflow-wrap: anywhere; }
+}

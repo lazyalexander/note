@@ -65,12 +65,13 @@ function termBarHtml() {
       <span class="prompt-label">$</span>
       <span class="term-field">
         <span class="term-ghost" id="term-ghost" aria-hidden="true"><span class="term-ghost-typed"></span><span class="term-ghost-rest"></span></span>
-        <input class="term-input" id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="/find  /theme  ·  Tab 补全  ·  Esc 关闭" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+        <input class="term-input" id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="输入 /find 关键词，或 /help 查看说明" aria-label="命令栏" aria-describedby="term-hint" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
       </span>
       <kbd class="term-kbd" aria-hidden="true">Esc</kbd>
     </label>
     <div class="term-pop">
-      <pre class="term-echo" id="term-echo" hidden></pre>
+      <p class="term-hint" id="term-hint">↑ ↓ 选择 · Tab 补全 · Enter 执行 · Esc 收起</p>
+      <pre class="term-echo" id="term-echo" role="status" aria-live="polite" aria-atomic="true" hidden></pre>
       <ul class="suggest" id="suggest" role="listbox" hidden></ul>
     </div>
   </div>
@@ -106,8 +107,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var r=pick(),d=document.documentElement;if(r.theme==="tokyo")d.removeAttribute("data-theme");else d.setAttribute("data-theme",r.theme);d.setAttribute("data-theme-mode",r.mode);return r};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=38">
-<link rel="stylesheet" href="assets/code.css?v=38">
+<link rel="stylesheet" href="assets/style.css?v=39">
+<link rel="stylesheet" href="assets/code.css?v=39">
 </head>
 <body>
 ${termBarHtml()}
@@ -217,14 +218,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=38"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=38"></script>`;
+<script type="module" src="assets/terminal.js?v=39"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=39"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=38" defer></script>
+<script src="assets/reader.js?v=39" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=38"></script>
+<script type="module" src="assets/search.js?v=39"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");

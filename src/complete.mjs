@@ -11,6 +11,7 @@ import { COMMANDS_LIST } from "./commands-list.mjs";
 
 export const MAX_ITEMS = 12;
 export const THEME_NAMES = ["auto", "paper", "tokyo", "ink"];
+const THEME_HINTS = { auto: "自动 · 06–18 点白天，其余夜间", paper: "白天 · 暖纸色", tokyo: "夜间 · 紫色终端", ink: "夜间 · 深色阅读" };
 
 /** Term prefixes offered inside a /find expression: [text, hint]. */
 export const TERM_PREFIXES = [
@@ -108,7 +109,7 @@ export function complete(line, ctx = {}) {
       const w = low(rest.trim());
       for (const t of THEME_NAMES) {
         if (t.startsWith(w) && !/\s/.test(rest.trim())) {
-          push(items, seen, { kind: "theme", label: t, hint: "theme", text: head + t, exec: true });
+          push(items, seen, { kind: "theme", label: t, hint: THEME_HINTS[t], text: head + t, exec: true });
         }
       }
     }

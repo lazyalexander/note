@@ -1,4 +1,4 @@
-import { searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=37";
+import { searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=39";
 
 /**
  * Client-rendered /find result page: search.html?q=<expr>, grouped by folder.
@@ -41,7 +41,7 @@ import { searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, 
 
   let aboutMod = null;
   function loadAbout() {
-    if (!aboutMod) aboutMod = import("./about-search.js?v=37");
+    if (!aboutMod) aboutMod = import("./about-search.js?v=39");
     return aboutMod;
   }
 

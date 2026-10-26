@@ -3,10 +3,13 @@ import {
   THEME_NAMES,
   complete,
   formatQueryError,
+  parseQuery,
+  normalizeSearchInput,
+  describeQueryError,
   searchDocs,
   hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=41";
+} from "./term-engine.js?v=42";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -298,6 +301,28 @@ import {
   }
   window.__term = { open: open, close: close, isOpen: function () { return isOpen; }, cycleTheme: cycleTheme, notify: notify };
 
+  // Validate home searches in place, before navigating to a results page.
+  const homeForm = document.querySelector(".home-search");
+  const homeInput = document.getElementById("home-query");
+  const homeFeedback = document.getElementById("home-search-feedback");
+  if (homeForm && homeInput && homeFeedback) {
+    homeForm.addEventListener("submit", function (e) {
+      const query = normalizeSearchInput(homeInput.value, ctx.tags);
+      const result = parseQuery(query);
+      if (!result.ok || !query.trim()) {
+        e.preventDefault();
+        homeFeedback.textContent = result.ok ? "先输入一个关键词，例如 find 心跳。" : describeQueryError(result.error);
+        homeFeedback.hidden = false;
+        homeInput.setAttribute("aria-invalid", "true");
+        homeInput.focus();
+      }
+    });
+    homeInput.addEventListener("input", function () {
+      homeInput.removeAttribute("aria-invalid");
+      homeFeedback.hidden = true;
+    });
+  }
+
   // ---------------------------------------------------------------- wiring
   const themeBtn = document.getElementById("theme-toggle");
   if (themeBtn) themeBtn.addEventListener("click", function () { cycleTheme(); themeBtn.blur(); });
@@ -380,7 +405,7 @@ import {
   });
 
   // Warm the embeddings index + e5 model in the background so the first about: term is snappy.
-  import("./about-search.js?v=41")
+  import("./about-search.js?v=42")
     .then(function (mod) { if (mod && typeof mod.ensureAboutReady === "function") return mod.ensureAboutReady(null); })
     .catch(function () {});
 

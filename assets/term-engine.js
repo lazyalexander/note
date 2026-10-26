@@ -930,6 +930,18 @@ export function makeResultView(doc, info, terms, { maxLines = 4, passageChars = 
   return { kind: "snippet", parts: sn.parts, matched: sn.matched };
 }
 
+/** Short recovery guidance for search forms; parser diagnostics stay available separately. */
+export function describeQueryError(error) {
+  const message = error.message || "";
+  if (/unterminated quote/.test(message)) return '引号还没有闭合，请补上结尾的双引号。';
+  if (/missing.*\)/.test(message)) return '左括号还没有闭合，请补上右括号。';
+  if (/regex|flag/.test(message)) return '正则写法不完整或不受支持。请检查成对的 /；普通搜索直接输入关键词即可。';
+  if (/selector/.test(message)) return '语义搜索的数量或阈值有误。例如 about:心跳:top-3，数量需要是大于 0 的整数。';
+  if (/expected a (value|query)|empty tag/.test(message)) return '搜索条件还缺少内容，例如 tag:poe 或 about:心跳。';
+  if (/expected a term/.test(message)) return '运算符后面还需要一个条件，例如 心跳 | 黑猫。';
+  return '请检查条件、括号和运算符的搭配，也可以先只输入一个关键词。';
+}
+
 /** Command catalogue shared by the engine (help text) and completion. /find is the only real search command. */
 export const COMMANDS_LIST = [
   { name: "/find", args: true, desc: "搜索 · 词 / tag: / grep: / about:（语义）· & | ! ( )" },

@@ -176,7 +176,6 @@ a:hover { color: var(--blue); text-decoration: underline; }
   border-left: 2px solid transparent;
   color: var(--fg);
 }
-.suggest-item:hover,
 .suggest-item.active {
   background: var(--sel);
   border-left-color: var(--blue);
@@ -730,7 +729,7 @@ article.post a:hover { color: var(--eva-green); text-decoration-color: var(--eva
 .suggest-kind.k-folder { color: var(--eva-purple); }
 .suggest-kind.k-tag { color: var(--eva-orange); }
 .suggest-kind.k-post { color: var(--eva-blue); }
-.suggest-item.ghosted { background: color-mix(in srgb, var(--sel) 45%, transparent); }
+.suggest-item.ghosted .suggest-marker { color: var(--comment); }
 .suggest-item .suggest-stem { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* reader rails no longer sit under a sticky header */
@@ -940,3 +939,14 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
   .suggest-item { flex-wrap: wrap; gap: 0.2rem 0.5rem; }
   .suggest-item .suggest-stem { flex-basis: 100%; max-width: 100%; padding-left: 4.8em; white-space: normal; overflow-wrap: anywhere; }
 }
+
+/* Validation is recoverable form feedback, rather than a page-level alarm. */
+.search-feedback { margin: 0.75rem 0 0; padding: 0.65rem 0.85rem; border-left: 2px solid var(--eva-purple); background: var(--bg-elev); color: var(--fg-dim); font-size: 0.9rem; overflow-wrap: anywhere; }
+.search-feedback[hidden] { display: none; }
+.sr-search { margin: 1.25rem 0; }
+.search-recovery { padding: 1.5rem 0; border-top: 1px solid var(--border); color: var(--fg-dim); }
+.search-recovery h2 { margin: 0 0 0.5rem; font-size: 1.1rem; color: var(--fg); }
+.search-recovery p { margin: 0 0 1rem; }
+.search-recovery details { margin: 1rem 0; }
+.search-recovery summary { cursor: pointer; color: var(--comment); }
+.search-recovery pre { padding: 1rem; background: var(--bg-elev); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }

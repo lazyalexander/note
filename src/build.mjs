@@ -108,8 +108,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=41">
-<link rel="stylesheet" href="assets/code.css?v=41">
+<link rel="stylesheet" href="assets/style.css?v=42">
+<link rel="stylesheet" href="assets/code.css?v=42">
 </head>
 <body>
 ${termBarHtml()}
@@ -221,14 +221,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=41"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=41"></script>`;
+<script type="module" src="assets/terminal.js?v=42"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=42"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=41" defer></script>
+<script src="assets/reader.js?v=42" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=41"></script>
+<script type="module" src="assets/search.js?v=42"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -336,8 +336,9 @@ ${railHtml(post)}
 </section>
 <form class="home-search" action="search.html" method="get" role="search">
   <label for="home-query">搜索笔记</label>
-  <div class="home-search-field"><span aria-hidden="true">⌕</span><input id="home-query" name="q" type="search" required placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button type="submit">搜索 <span aria-hidden="true">↗</span></button></div>
+  <div class="home-search-field"><span aria-hidden="true">⌕</span><input id="home-query" aria-describedby="home-search-feedback" name="q" type="search" required placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button type="submit">搜索 <span aria-hidden="true">↗</span></button></div>
   <p class="search-hint">输入 find 关键词搜索，也可直接输入关键词；按 <kbd>/</kbd> 使用命令栏。</p>
+  <p id="home-search-feedback" class="search-feedback" role="status" hidden></p>
 </form>
 <div class="library-heading"><h2>笔记目录</h2><span>${posts.length} 篇 · ${seriesList.length} 个文件夹</span></div>
 ${seriesHtml}
@@ -352,6 +353,11 @@ ${seriesHtml}
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">
   <p class="sr-prompt"><span class="sr-dollar">$</span> <span class="sr-cmd">/find</span> <span class="sr-expr" id="sr-expr"></span></p>
+  <form class="home-search sr-search" action="search.html" method="get" role="search">
+    <label for="search-query">搜索笔记</label>
+    <div class="home-search-field"><input id="search-query" name="q" type="text" enterkeyhint="search" required aria-describedby="search-feedback" placeholder="find 关键词"><button type="submit">搜索 ↗</button></div>
+    <p id="search-feedback" class="search-feedback" role="status" hidden></p>
+  </form>
   <p class="sr-summary" id="sr-summary">searching…</p>
   <p class="sr-notes" id="sr-notes"></p>
 </section>

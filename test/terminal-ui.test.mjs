@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
-import { createTermEngine, THEME_NAMES, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError } from "../src/term-engine.mjs";
+import { createTermEngine, THEME_NAMES, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError, parseQuery, normalizeSearchInput, describeQueryError } from "../src/term-engine.mjs";
 
 // Exercise the real terminal event handlers without a browser or an OS keyboard layout.
 const source = (await readFile(new URL("../assets/terminal.js", import.meta.url), "utf8"))
@@ -13,7 +13,7 @@ function terminal() {
       this.value = ""; this.children = []; this.dataset = {}; this.attrs = {};
       this.handlers = {}; this.hidden = true; this.clientWidth = 500; this.scrollWidth = 0;
       const classes = new Set();
-      this.classList = { add: (x) => classes.add(x), remove: (x) => classes.delete(x),
+      this.classList = { add: (x) => classes.add(x), remove: (x) => classes.delete(x), contains: (x) => classes.has(x),
         toggle: (x, on) => on ? classes.add(x) : classes.delete(x) };
     }
     addEventListener(name, fn) { (this.handlers[name] ||= []).push(fn); }
@@ -31,19 +31,19 @@ function terminal() {
     querySelectorAll() { return this.children; }
     focus() {} blur() { this.fire("blur"); } scrollIntoView() {}
   }
-  const elements = Object.fromEntries(["term-bar", "term-input", "suggest", "term-echo", "term-ghost", "sl-msg"]
+  const elements = Object.fromEntries(["term-bar", "term-input", "suggest", "term-echo", "term-ghost", "sl-msg", "home-form", "home-query", "home-search-feedback"]
     .map((id) => [id, new Element()]));
   const timers = new Map(), submitted = [], navigated = [];
   let id = 0;
   const window = { addEventListener() {}, location: { assign: (href) => navigated.push(href) } };
   const ctx = {
-    window, document: { getElementById: (id) => elements[id], createElement: () => new Element(),
+    window, document: { querySelector: () => elements["home-form"], getElementById: (id) => elements[id], createElement: () => new Element(),
       addEventListener() {}, dispatchEvent() {} },
     localStorage: { getItem: () => null, setItem() {} },
     CustomEvent: class {},
     setTimeout: (fn) => { timers.set(++id, fn); return id; }, clearTimeout: (id) => timers.delete(id),
     fetch: async () => ({ ok: true, json: async () => ({ docs: [] }) }),
-    THEME_NAMES, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError,
+    THEME_NAMES, complete, searchDocs, hasAbout, scrubInvisible, formatQueryError, parseQuery, normalizeSearchInput, describeQueryError,
     createTermEngine: (options) => {
       const engine = createTermEngine(options), submit = engine.submit;
       engine.submit = (line) => { submitted.push(line); return submit(line); };
@@ -137,4 +137,31 @@ test("retyped and full-width slashes normalize to the command prompt", () => {
     assert.equal(input.attrs["aria-invalid"], "false");
     assert.equal(ui.suggest.hidden, false);
   }
+});
+
+test("mouse selection followed by keyboard selection leaves a single highlighted candidate", async () => {
+  const ui = terminal();
+  ui.open("/f");
+  const rows = ui.suggest.children;
+  rows[0].fire("mouseenter");
+  ui["term-input"].fire("keydown", { key: "ArrowDown" });
+  assert.equal(rows.filter((r) => r.classList.contains("active")).length, 1);
+  assert.equal(rows.filter((r) => r.classList.contains("ghosted")).length, 0);
+  assert.equal(rows.filter((r) => r.attrs["aria-selected"] === "true").length, 1);
+  const css = await readFile(new URL("../assets/style.css", import.meta.url), "utf8");
+  assert.equal(css.includes(".suggest-item:hover"), false);
+});
+
+test("home query errors stay in the form and clear when corrected", () => {
+  const ui = terminal(), input = ui["home-query"], form = ui["home-form"], feedback = ui["home-search-feedback"];
+  input.value = "find (心跳";
+  assert.equal(form.fire("submit").defaultPrevented, true);
+  assert.equal(input.value, "find (心跳");
+  assert.equal(input.attrs["aria-invalid"], "true");
+  assert.match(feedback.textContent, /右括号/);
+  input.value = "find 心跳";
+  input.fire("input");
+  assert.equal(feedback.hidden, true);
+  assert.equal(input.attrs["aria-invalid"], undefined);
+  assert.equal(form.fire("submit").defaultPrevented, undefined);
 });

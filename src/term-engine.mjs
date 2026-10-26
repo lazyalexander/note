@@ -1,7 +1,7 @@
 /** Pure terminal command engine for the note TUI blog. */
 import { scrubInvisible, codepointsHex, normalizeTag } from "./text-scrub.mjs";
 import { postTags, tagAtomMatches } from "./tag-match.mjs";
-import { parseQuery, formatQueryError, cleanExpr, searchDocs, searchDocsAsync, makeSnippet, highlightParts, hasAbout, grepMatchLines, makeResultView } from "./query.mjs";
+import { parseQuery, formatQueryError, describeQueryError, cleanExpr, searchDocs, searchDocsAsync, makeSnippet, highlightParts, hasAbout, grepMatchLines, makeResultView } from "./query.mjs";
 import { THEME_NAMES } from "./themes.mjs";
 import { complete } from "./complete.mjs";
 import { scoreEmbeddings, selectAbout, dynamicCount } from "./about.mjs";
@@ -11,6 +11,7 @@ export {
   THEME_NAMES,
   parseQuery,
   formatQueryError,
+  describeQueryError,
   cleanExpr,
   searchDocs,
   searchDocsAsync,

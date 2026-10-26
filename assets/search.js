@@ -1,4 +1,4 @@
-import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=41";
+import { normalizeSearchInput, describeQueryError, searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=42";
 
 /**
  * Client-rendered /find result page: search.html?q=<expr>, grouped by folder.
@@ -21,6 +21,13 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
     url.searchParams.set("q", q);
     history.replaceState(null, "", url);
   }
+  const queryInput = document.getElementById("search-query");
+  const feedback = document.getElementById("search-feedback");
+  queryInput.value = rawQuery;
+  queryInput.addEventListener("input", function () {
+    queryInput.removeAttribute("aria-invalid");
+    feedback.hidden = true;
+  });
   exprEl.textContent = q;
   document.title = q ? "/find " + q + " · note" : "search · note";
   root.dataset.state = "loading";
@@ -34,10 +41,10 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
   function setState(s) { root.dataset.state = s; }
   function note(html) { if (notesEl) notesEl.innerHTML = html || ""; }
 
-  function fail(msg) {
-    sumEl.textContent = "";
+  function fail() {
+    sumEl.textContent = "搜索暂时不可用";
     setState("error");
-    root.innerHTML = '<div class="sr-empty sr-err"><pre>' + esc(msg) + "</pre></div>";
+    root.innerHTML = '<div class="search-recovery"><h2>暂时没能读取笔记</h2><p>输入已保留，请检查连接后重试。</p><a href="search.html?q=' + encodeURIComponent(rawQuery) + '">重新搜索 ↗</a> · <a href="./">返回目录</a></div>';
   }
 
   function loading(text) {
@@ -48,7 +55,7 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
 
   let aboutMod = null;
   function loadAbout() {
-    if (!aboutMod) aboutMod = import("./about-search.js?v=41");
+    if (!aboutMod) aboutMod = import("./about-search.js?v=42");
     return aboutMod;
   }
 
@@ -86,7 +93,7 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
     if (!n) {
       setState("done");
       root.dataset.count = "0";
-      root.innerHTML = '<div class="sr-empty"><p>没有匹配的文章。<br>换个关键字试试，或用 <code>|</code> 放宽条件；<kbd>/</kbd> 重新输入。</p></div>';
+      root.innerHTML = '<div class="sr-empty"><p>没有匹配的文章。<br>在上方换个关键词试试，或用 <code>|</code> 放宽条件。</p></div>';
       return;
     }
     function itemHtml(d) {
@@ -129,15 +136,18 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
     const docs = index.docs || [];
     const first = searchDocs(docs, q);
     if (!first.ok) {
-      sumEl.textContent = "syntax error";
-      setState("error");
-      root.innerHTML = '<div class="sr-empty sr-err"><pre>' + esc(formatQueryError(q, first.error)) + '</pre><p>按 <kbd>/</kbd> 修改表达式，<kbd>?</kbd> 查看语法与快捷键。</p></div>';
+      sumEl.textContent = "修改一下条件，再试一次";
+      setState("invalid");
+      feedback.textContent = describeQueryError(first.error);
+      feedback.hidden = false;
+      queryInput.setAttribute("aria-invalid", "true");
+      root.innerHTML = '<div class="search-recovery"><h2>搜索条件还差一点</h2><p>在上方直接修改，原来的输入会为你保留。</p><details><summary>查看具体位置</summary><pre>' + esc(formatQueryError(q, first.error)) + '</pre></details><a href="./">返回笔记目录 ↗</a></div>';
       return Promise.resolve();
     }
     if (first.empty) {
-      sumEl.textContent = "empty expression";
+      sumEl.textContent = "输入关键词，开始查找笔记";
       setState("done");
-      root.innerHTML = '<div class="sr-empty"><p>还没有表达式。按 <kbd>/</kbd> 输入 <code>/find 关键字</code>，例如 <code>/find poe/ &amp; (乌鸦 | about:死亡:top-2) &amp; !#draft</code>。</p></div>';
+      root.innerHTML = '<div class="sr-empty"><p>在上方输入关键词，例如 <code>find 心跳</code> 或 <code>tag:poe</code>。</p></div>';
       return Promise.resolve();
     }
     const finish = function (res) { render(index, res); };
@@ -154,5 +164,5 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
   fetch("search-index.json")
     .then(function (r) { if (!r.ok) throw new Error("search-index.json HTTP " + r.status); return r.json(); })
     .then(run)
-    .catch(function (e) { fail("cannot load search index: " + (e && e.message ? e.message : e)); });
+    .catch(fail);
 })();

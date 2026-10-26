@@ -6,7 +6,7 @@ import {
   searchDocs,
   hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=40";
+} from "./term-engine.js?v=41";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -175,8 +175,10 @@ import {
 
   function refresh() {
     if (composing) return;
-    // the bar opens with "/" pre-typed; typing "/find" on top of it must not give "//find"
-    if (/^\/\/+/.test(input.value)) input.value = input.value.replace(/^\/+/, "/");
+    // The opening shortcut already supplies a slash. Repeated/full-width slashes
+    // are still the command prompt, including after an IME commit.
+    const normalized = input.value.replace(/^[／/]+/, "/");
+    if (normalized !== input.value) input.value = normalized;
     const res = complete(input.value, ctx);
     items = res.items;
     ghost = res.ghost;
@@ -365,6 +367,8 @@ import {
     if (k !== "Enter") return;
     e.preventDefault();
     if (selected >= 0) { activate(); return; }
+    // A lone prompt shows guidance and candidates; it is not an incomplete /find.
+    if (scrubInvisible(input.value).trim() === "/") { submitLine(); return; }
     // typed a command name prefix (e.g. "/ab") → complete it instead of erroring
     if (auto >= 0 && items[auto] && (items[auto].kind === "cmd" || items[auto].kind === "theme")) {
       const it = items[auto];
@@ -376,7 +380,7 @@ import {
   });
 
   // Warm the embeddings index + e5 model in the background so the first about: term is snappy.
-  import("./about-search.js?v=40")
+  import("./about-search.js?v=41")
     .then(function (mod) { if (mod && typeof mod.ensureAboutReady === "function") return mod.ensureAboutReady(null); })
     .catch(function () {});
 

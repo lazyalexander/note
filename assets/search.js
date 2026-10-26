@@ -1,4 +1,4 @@
-import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=40";
+import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResultView, highlightParts, formatQueryError } from "./term-engine.js?v=41";
 
 /**
  * Client-rendered /find result page: search.html?q=<expr>, grouped by folder.
@@ -48,7 +48,7 @@ import { normalizeSearchInput, searchDocs, searchDocsAsync, hasAbout, makeResult
 
   let aboutMod = null;
   function loadAbout() {
-    if (!aboutMod) aboutMod = import("./about-search.js?v=40");
+    if (!aboutMod) aboutMod = import("./about-search.js?v=41");
     return aboutMod;
   }
 

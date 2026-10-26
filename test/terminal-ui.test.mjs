@@ -112,3 +112,29 @@ test("malformed search gets live feedback and a submitted error persists until c
   assert.equal(input.attrs["aria-invalid"], "false");
   assert.match(echo.textContent, /篇匹配/);
 });
+
+test("a lone slash stays a neutral command prompt, even on repeated Enter", () => {
+  const ui = terminal(), input = ui["term-input"], echo = ui["term-echo"];
+  ui.open("/");
+  assert.equal(ui.suggest.hidden, false);
+  for (let i = 0; i < 2; i++) {
+    input.fire("keydown", { key: "Enter" });
+    assert.equal(input.value, "/");
+    assert.equal(input.attrs["aria-invalid"], "false");
+    assert.equal(ui.suggest.hidden, false);
+    assert.match(echo.textContent, /\/find/);
+  }
+  assert.equal(ui.navigated.length, 0);
+});
+
+test("retyped and full-width slashes normalize to the command prompt", () => {
+  const ui = terminal(), input = ui["term-input"];
+  for (const raw of ["//", "／", "／／", "/／"]) {
+    input.value = raw;
+    input.fire("input");
+    assert.equal(input.value, "/");
+    input.fire("keydown", { key: "Enter" });
+    assert.equal(input.attrs["aria-invalid"], "false");
+    assert.equal(ui.suggest.hidden, false);
+  }
+});

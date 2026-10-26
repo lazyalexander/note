@@ -9,7 +9,7 @@ import {
   searchDocs,
   hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=42";
+} from "./term-engine.js?v=43";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -405,7 +405,7 @@ import {
   });
 
   // Warm the embeddings index + e5 model in the background so the first about: term is snappy.
-  import("./about-search.js?v=42")
+  import("./about-search.js?v=43")
     .then(function (mod) { if (mod && typeof mod.ensureAboutReady === "function") return mod.ensureAboutReady(null); })
     .catch(function () {});
 

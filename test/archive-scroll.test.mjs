@@ -9,24 +9,27 @@ function setup(reduced = false, present = true) {
   const preference = { matches: reduced, addEventListener: (name, fn) => { events.preference = fn; } };
   const window = { scrollY: 0, innerHeight: 800, addEventListener: (name, fn) => { events[name] = fn; } };
   const desk = { getBoundingClientRect: () => ({ top: 1920 - window.scrollY }) };
+  const stage = { style: { setProperty(name, value) { this[name] = value; } } };
   vm.runInNewContext(source, {
     archiveCameraFrame,
-    document: { getElementById: (id) => id === "archive-desk" ? desk : present ? { querySelector: () => camera, querySelectorAll: () => [] } : null },
+    document: { getElementById: (id) => id === "archive-desk" ? desk : present ? { querySelector: (selector) => selector === ".archive-camera" ? camera : stage } : null },
     window, matchMedia: () => preference,
     requestAnimationFrame: (fn) => { queue.push(fn); return queue.length; },
   });
-  return { camera, window, events, preference, queue, flush() { queue.splice(0).forEach((fn) => fn()); } };
+  return { camera, stage, window, events, preference, queue, flush() { queue.splice(0).forEach((fn) => fn()); } };
 }
-test("camera starts with a panorama, progresses continuously and centers the little house at arrival", () => {
+test("camera frames the full ship, arcs toward the towers and centers the rose window at arrival", () => {
   const far = archiveCameraFrame(0, 1920, 800);
   assert.equal(far.transform, "matrix(1 0 0 1 0 0)");
-  const mid = archiveCameraFrame(800, 1920, 800);
+  const mid = archiveCameraFrame(640, 1920, 800);
   assert.equal(mid.progress, .5);
-  const near = archiveCameraFrame(1600, 1920, 800);
+  const [midScale, , , , midTx, midTy] = mid.transform.slice(7, -1).split(" ").map(Number);
+  assert.ok((768 - midTx) / midScale < 600 && (512 - midTy) / midScale < 430);
+  const near = archiveCameraFrame(1280, 1920, 800);
   const [a, , , , tx, ty] = near.transform.slice(7, -1).split(" ").map(Number);
-  assert.equal(a, 4.8);
-  assert.ok(Math.abs(1640 * a + tx - 1200) < 1e-8);
-  assert.ok(Math.abs(1080 * a + ty - 700) < 1e-8);
+  assert.equal(a, 3.6);
+  assert.ok(Math.abs(800 * a + tx - 768) < 1e-8);
+  assert.ok(Math.abs(584 * a + ty - 512) < 1e-8);
   assert.deepEqual(archiveCameraFrame(50000, 1920, 800), near);
   assert.deepEqual(archiveCameraFrame(-50, 1920, 800), far);
 });
@@ -47,6 +50,7 @@ test("reduced motion stays static and responds to preference changes", () => {
   assert.notEqual(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
   ui.preference.matches = true; ui.events.preference(); ui.flush();
   assert.equal(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
+  assert.equal(ui.stage.style["--approach"], 0);
 });
 test("non-home pages install no scene handlers", () => {
   assert.equal(Object.keys(setup(false, false).events).length, 0);

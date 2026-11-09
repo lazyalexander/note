@@ -4,7 +4,7 @@ Minimal TUI static blog. One folder under `content/` = one series (a single post
 
 ## Browse & search
 
-The home page scrolls from a city overview into a small archive house, then presents separate Blog, About, and Guide windows. Blog contains the search form and collapsible folder contents. Expand a folder to open any article directly; article rows include estimated reading time. Search accepts a plain expression, `/find <expr>`, or `find <expr>` and uses the same result page as the command bar.
+The home page follows a cathedral ship from orbit, past the twin towers to the rose window of its archive. Scroll to approach or follow the masthead links directly to the Blog, About, and Guide windows. Blog contains the search form and collapsible folder contents. Expand a folder to open any article directly; article rows include estimated reading time. Search accepts a plain expression, `/find <expr>`, or `find <expr>` and uses the same result page as the command bar.
 
 ## Keyboard & search
 

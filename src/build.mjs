@@ -113,7 +113,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=47">
+<link rel="stylesheet" href="assets/style.css?v=48">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -125,7 +125,6 @@ ${body}
 </div>`}
 ${statuslineHtml()}
 ${scriptTags}
-<script src="assets/archive-scroll.js?v=47" type="module"></script>
 <script type="module" src="assets/search-box.js?v=47"></script>
 </body>
 </html>
@@ -136,7 +135,7 @@ async function main() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
-  await cp(join(root, "assets", "archive-city.svg"), join(distDir, "assets", "archive-city.svg"));
+  await cp(join(root, "assets", "cathedral-ship.webp"), join(distDir, "assets", "cathedral-ship.webp"));
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
@@ -347,18 +346,31 @@ ${railHtml(post)}
     return folders.flatMap((s) => s.posts).map((p) => `<li><a href="posts/${p.outName}">${escapeHtml(p.title)}<span aria-hidden="true">↗</span></a></li>`).join("\n");
   }
   const indexBody = `<main class="home library archive-world" id="archive-world">
-<div class="archive-stage" aria-hidden="true"><div class="archive-haze"></div><svg class="archive-city" viewBox="0 0 2400 1400" preserveAspectRatio="xMidYMid slice"><g class="archive-camera"><image href="assets/archive-city.svg" width="2400" height="1400"/></g></svg></div>
+<div class="archive-stage" aria-hidden="true">
+  <div class="star-field"><div class="orbital-arc"></div><div class="archive-moon"></div></div>
+  <svg class="ship-plate" viewBox="0 0 1536 1024" focusable="false">
+    <g class="archive-camera">
+      <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
+      <g class="chapel-callout">
+        <path d="M800 600 L726 881 H520" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/>
+        <circle cx="800" cy="600" r="5" fill="currentColor"/>
+        <text x="520" y="862" fill="currentColor">档案舱</text>
+      </g>
+    </g>
+  </svg>
+</div>
 <section class="archive-journey" aria-labelledby="archive-title">
   <div class="archive-arrival">
-    <p class="library-kicker">~/note <span>个人笔记 / PERSONAL ARCHIVE</span></p>
-    <h1 id="archive-title">留下一点想法。</h1>
-    <p class="hero-sub">从一座城，走进一间书房。</p>
-    <a class="archive-cue" href="#archive-desk">向下滚动 · 靠近档案室 <span aria-hidden="true">↓</span></a>
+    <header class="archive-masthead">
+      <span class="site-signature">~/note</span>
+      <nav aria-label="首页模块"><a href="#notebook">Blog 正文</a><a href="#site-about">关于本站</a><a href="#site-help">使用说明</a></nav>
+    </header>
+    <h1 id="archive-title">舰上手记</h1>
+    <p class="archive-subtitle" lang="en">Shipboard notes</p>
+    <a class="archive-cue" href="#archive-desk"><span class="descent-arrow" aria-hidden="true">↓</span>进入档案舱</a>
   </div>
-  <div class="journey-caption" aria-hidden="true"><span>01 / 城市远景</span><span>02 / 工业街区</span><span>03 / 归档小屋</span></div>
 </section>
 <div class="archive-desk" id="archive-desk">
-  <nav class="desk-navigation" aria-label="首页模块"><a href="#notebook">Blog 正文</a><a href="#site-about">关于本站</a><a href="#site-help">使用说明</a></nav>
   <div class="desk-grid">
     <section class="notebook-window blog-window" id="notebook" aria-labelledby="notebook-title">
       <div class="library-heading"><h2 id="notebook-title">Blog / 正文</h2><span>${blogPosts.length} 篇 · ${homeGroups.blog.length} 个文件夹</span></div>
@@ -391,7 +403,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts, wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: scripts + '\n<script type="module" src="assets/archive-scroll.js?v=48"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

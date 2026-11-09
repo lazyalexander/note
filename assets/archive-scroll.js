@@ -1,4 +1,4 @@
-import { archiveCameraFrame } from "./archive-camera.mjs";
+import { archiveCameraFrame } from "./archive-camera.mjs?v=48";
 
 /** Native scrolling drives the camera; content never waits for animation. */
 (function () {
@@ -6,7 +6,7 @@ import { archiveCameraFrame } from "./archive-camera.mjs";
   if (!world) return;
   const camera = world.querySelector(".archive-camera");
   const desk = document.getElementById("archive-desk");
-  const captions = world.querySelectorAll(".journey-caption span");
+  const stage = world.querySelector(".archive-stage");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   let frame = 0, deskTop = 1;
   function measure() {
@@ -17,8 +17,7 @@ import { archiveCameraFrame } from "./archive-camera.mjs";
     frame = 0;
     const { transform, progress } = archiveCameraFrame(window.scrollY, deskTop, window.innerHeight, reduce.matches);
     camera.setAttribute("transform", transform);
-    const phase = Math.min(2, Math.floor(progress * 3));
-    captions.forEach((caption, i) => caption.classList.toggle("current", i === phase));
+    stage.style.setProperty("--approach", progress);
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(paint); }
   window.addEventListener("scroll", schedule, { passive: true });

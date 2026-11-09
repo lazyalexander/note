@@ -1056,7 +1056,8 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   position: absolute; left: 80%; top: 17%; width: clamp(2.8rem, 5.5vw, 6.5rem); aspect-ratio: 1;
   transform: rotate(-29deg);
 }
-.ship-plate { position: absolute; left: 25%; top: 17%; width: 65%; height: 68%; overflow: visible; }
+.fleet-formation { position: absolute; inset: 0; width: min(100%, 184svh); margin-inline: auto; }
+.ship-plate { position: absolute; left: 27%; top: 19%; width: 66%; height: 69%; overflow: visible; }
 .chapel-callout { color: var(--fg-dim); opacity: clamp(0, 1 - var(--approach, 0) * 4, 1); }
 .chapel-callout text { font: 21px var(--read-serif); letter-spacing: .14em; }
 .archive-journey { height: 244svh; position: relative; }
@@ -1093,7 +1094,8 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   .desk-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
 }
 @media (max-aspect-ratio: 1/1) {
-  .ship-plate { left: 9%; top: 32%; width: 84%; height: 37%; }
+  .fleet-formation { inset-block: clamp(11.25rem, 24svh, 15rem) clamp(5rem, 12svh, 8rem); }
+  .ship-plate { left: 15%; top: 10%; width: 81%; height: 62%; }
   .orbital-arc { top: 28%; left: -13%; width: 136%; height: 41%; }
 }
 @media (max-width: 600px) {
@@ -1111,8 +1113,8 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 }
 
 /* Fleet formation and the inhabited archive beyond the rose window. */
-.archive-stage { --moon-shadow: #292138; --cabin-art: url("archive-night.webp"); }
-:root[data-theme="day"] .archive-stage { --moon-shadow: #c9bbd6; --cabin-art: url("archive-day.webp"); }
+.archive-stage { --moon-shadow: #292138; --cabin-art: url("archive-night.webp"); --jet-violet: #bd88fa; --jet-halo: #aa74ea; }
+:root[data-theme="day"] .archive-stage { --moon-shadow: #c9bbd6; --cabin-art: url("archive-day.webp"); --jet-violet: #8050b8; --jet-halo: #ae79dc; }
 .star-field::before, .star-field::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background-image: radial-gradient(circle, var(--star) 1px, transparent 1.8px);
@@ -1127,10 +1129,15 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   opacity: calc(.80 + .018 * var(--depth));
   transform: translate(calc(-50% - 1vw * var(--depth) * var(--approach, 0)), -50%);
 }
-.engine-flame { animation: engine-burn 920ms ease-in-out infinite alternate; }
-.engine-flame.second { animation-delay: -.55s; animation-duration: 1.15s; }
-.engine-flame.third { animation-delay: -.32s; animation-duration: .84s; }
-@keyframes engine-burn { from { transform: scale(.8, .88); opacity: .75; } to { transform: scale(1.16, 1.04); opacity: 1; } }
+.engine-flame { transform-origin: 0 0; animation: engine-burn var(--burn-cycle, 2.8s) ease-in-out infinite alternate; }
+.escort { --burn-cycle: 2.1s; }
+.escort:nth-child(even) { --burn-cycle: 2.6s; }
+@keyframes engine-burn {
+  0% { transform: scale(.87, .96); opacity: .84; }
+  44% { transform: scale(1.05, 1.05); opacity: 1; }
+  68% { transform: scale(.98, .98); opacity: .92; }
+  100% { transform: scale(1.12, .94); opacity: .98; }
+}
 .archive-portal { position: absolute; inset: 0; overflow: hidden; visibility: hidden; }
 .cabin-scene {
   position: absolute; inset: 0; background: var(--sky) var(--cabin-art) 65% 45% / cover no-repeat;

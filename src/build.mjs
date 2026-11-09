@@ -7,7 +7,7 @@ import { loadContent } from "./content.mjs";
 import { partitionHomeSeries } from "./home-content.mjs";
 import { resolveTheme } from "./themes.mjs";
 import { formatMessage, languages } from "../assets/messages.mjs";
-import { fleetEscortsHtml } from "./fleet.mjs";
+import { exhaustHtml, fleetEscortsHtml } from "./fleet.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -122,7 +122,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=51">
+<link rel="stylesheet" href="assets/style.css?v=52">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -374,6 +374,7 @@ ${railHtml(post)}
       <g fill="var(--orbit)" opacity=".28"><circle cx="67" cy="29" r="5"/><circle cx="65" cy="67" r="9"/><circle cx="38" cy="48" r="4"/></g>
     </svg>
   </div>
+  <div class="fleet-formation">
   <div class="escorts">${fleetEscortsHtml()}</div>
   <svg class="ship-plate" viewBox="0 0 1536 1024" focusable="false">
     <defs>
@@ -386,19 +387,23 @@ ${railHtml(post)}
           <feFuncB type="table" tableValues=".125 .192 .463 .651 .753 .835 .882 .929 .988"/>
         </feComponentTransfer>
       </filter>
-      <linearGradient id="exhaust"><stop stop-color="#9b51e8" stop-opacity="0"/><stop offset=".55" stop-color="#ba6aee" stop-opacity=".72"/><stop offset=".88" stop-color="#ffe0e8"/><stop offset="1" stop-color="white"/></linearGradient>
-      <g id="plume"><path d="M0 -12 Q-52 -20 -168 -37 Q-75 -8 0 12Z" fill="url(#exhaust)"/><path d="M0 -6 L-99 -24 L0 5Z" fill="url(#exhaust)"/></g>
-      <g id="archive-vessel">
-        <g class="thrusters">
-          <g transform="translate(119 304)"><use class="engine-flame" href="#plume"/></g>
-          <g transform="translate(86 352)"><use class="engine-flame second" href="#plume"/></g>
-          <g transform="translate(73 425)"><use class="engine-flame third" href="#plume"/></g>
-        </g>
-        <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
+      <radialGradient id="exhaust-halo">
+        <stop stop-color="var(--jet-halo)" stop-opacity=".65"/><stop offset=".46" stop-color="var(--jet-halo)" stop-opacity=".26"/>
+        <stop offset="1" stop-color="var(--jet-halo)" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="exhaust-stream" gradientUnits="userSpaceOnUse" x1="-224" x2="6">
+        <stop stop-color="var(--jet-violet)" stop-opacity="0"/><stop offset=".28" stop-color="var(--jet-violet)" stop-opacity=".22"/>
+        <stop offset=".63" stop-color="var(--jet-violet)" stop-opacity=".78"/><stop offset=".88" stop-color="#e1bcff"/><stop offset="1" stop-color="#fff9ff"/>
+      </linearGradient>
+      <g id="plume">
+        <ellipse cx="-74" rx="144" ry="21" fill="url(#exhaust-halo)"/>
+        <path d="M6 -10 C-15 -12 -27 -7 -46 -8 S-84 -10 -111 -5 S-178 -5 -224 -1 C-180 0 -156 6 -122 4 S-71 12 -45 8 S-12 11 6 9Z" fill="url(#exhaust-stream)"/>
+        <path d="M5 -6 Q-12 -7 -29 0 Q-15 6 5 5Z M-30 0 Q-41 -3 -55 0 Q-42 3 -30 0Z M-59 0 Q-68 -1.8 -80 0 Q-67 1.8 -59 0Z" fill="#fff3ff" opacity=".86"/>
       </g>
     </defs>
     <g class="archive-camera">
-      <use href="#archive-vessel"/>
+      ${exhaustHtml([[119, 304, .91], [86, 352, 1.06], [73, 425, 1.14]], 14)}
+      <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
       <g class="chapel-callout">
         <path d="M800 600 L726 881 H520" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/>
         <circle cx="800" cy="600" r="5" fill="currentColor"/>
@@ -406,6 +411,7 @@ ${railHtml(post)}
       </g>
     </g>
   </svg>
+  </div>
   <div class="archive-portal"><div class="cabin-scene"></div></div>
   <svg class="porthole-rim" viewBox="-100 -100 200 200" preserveAspectRatio="none" focusable="false">
     <defs><path id="window-cusp" d="M-38 -92 Q-17 -91 0 -72 Q17 -91 38 -92"/></defs>

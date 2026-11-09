@@ -1,3 +1,4 @@
+import { t } from "./messages.mjs?v=49";
 /**
  * LazyVim-style keyboard navigation: modes, leader key + which-key, flash jumps,
  * pickers, scrolling, list cursor, help overlay, statusline. Works on reader, home and search pages.
@@ -18,7 +19,7 @@
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
-  function notify(msg, err) { if (term()) term().notify(msg, err); }
+  function notify(msg, err) { if (term()) term().notify(t(msg), err); }
   function go(href) {
     const a = document.createElement("a");
     a.href = href;
@@ -29,7 +30,11 @@
   let mode = "NORMAL"; // NORMAL | COMMAND | LEADER | FLASH | PICK | HELP
   function setMode(m) {
     mode = m;
-    if (modeEl) { modeEl.textContent = m; modeEl.setAttribute("data-mode", m); }
+    if (modeEl) {
+      modeEl.dataset.msg = m;
+      modeEl.textContent = t(m);
+      modeEl.setAttribute("data-mode", m);
+    }
     html.setAttribute("data-mode", m.toLowerCase());
   }
   function setPending(t) { if (pendingEl) pendingEl.textContent = t || ""; }
@@ -176,6 +181,7 @@
     return out;
   }
   function openPicker(title, items, emptyMsg) {
+    title = t(title);
     cancelAll(true);
     if (!items.length) { notify(emptyMsg || "nothing to pick", true); return; }
     setMode("PICK");
@@ -185,9 +191,9 @@
     pickerEl.innerHTML =
       '<div class="picker-box" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
       '<div class="picker-title">' + esc(title) + "</div>" +
-      '<input class="picker-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="filter…">' +
+      '<input class="picker-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + esc(t("filter…")) + '">' +
       '<ul class="picker-list" role="listbox"></ul>' +
-      '<div class="picker-foot"><span><kbd>↑</kbd><kbd>↓</kbd> / <kbd>^n</kbd><kbd>^p</kbd> 选择</span><span><kbd>Enter</kbd> 确认</span><span><kbd>Esc</kbd> 关闭</span></div>' +
+      '<div class="picker-foot"><span><kbd>↑</kbd><kbd>↓</kbd> / <kbd>^n</kbd><kbd>^p</kbd> ' + esc(t("选择")) + '</span><span><kbd>Enter</kbd> ' + esc(t("确认")) + '</span><span><kbd>Esc</kbd> ' + esc(t("关闭")) + '</span></div>' +
       "</div>";
     document.body.appendChild(pickerEl);
     const input = pickerEl.querySelector(".picker-input");
@@ -197,7 +203,7 @@
       pickerState.shown = filterItems(items, input.value).slice(0, 60).map(function (x) { return x.it; });
       if (pickerState.sel >= pickerState.shown.length) pickerState.sel = Math.max(0, pickerState.shown.length - 1);
       list.innerHTML = "";
-      if (!pickerState.shown.length) { list.innerHTML = '<li class="picker-empty">no match</li>'; return; }
+      if (!pickerState.shown.length) { list.innerHTML = '<li class="picker-empty">' + esc(t("no match")) + '</li>'; return; }
       pickerState.shown.forEach(function (it, i) {
         const li = document.createElement("li");
         li.className = "picker-item" + (i === pickerState.sel ? " active" : "");
@@ -256,10 +262,10 @@
     posts.forEach(function (p) { (p.tags || []).forEach(function (t) { counts[t] = (counts[t] || 0) + 1; }); });
     const items = [];
     seriesInfo.forEach(function (s) {
-      items.push({ label: s.slug + "/", hint: s.title + " · " + s.count + " 篇", search: s.dir + " " + s.title, run: function () { go("search.html?q=" + encodeURIComponent(s.slug + "/")); } });
+      items.push({ label: s.slug + "/", hint: s.title + " · " + t("{0} 篇", s.count), search: s.dir + " " + s.title, run: function () { go("search.html?q=" + encodeURIComponent(s.slug + "/")); } });
     });
-    Object.keys(counts).sort().forEach(function (t) {
-      items.push({ label: "#" + t, hint: counts[t] + " 篇", search: "tag " + t, run: function () { go("search.html?q=" + encodeURIComponent("#" + t)); } });
+    Object.keys(counts).sort().forEach(function (tag) {
+      items.push({ label: "#" + tag, hint: t("{0} 篇", counts[tag]), search: "tag " + tag, run: function () { go("search.html?q=" + encodeURIComponent("#" + tag)); } });
     });
     openPicker("Tags & folders  →  /find", items);
   }
@@ -267,19 +273,19 @@
     const hs = headings();
     const items = [];
     const h1 = document.querySelector(".chapter-heading h1");
-    if (h1) items.push({ label: h1.textContent.trim(), hint: "top", run: function () { scrollToY(0); } });
+    if (h1) items.push({ label: h1.textContent.trim(), hint: t("top"), run: function () { scrollToY(0); } });
     hs.forEach(function (h) {
       items.push({ label: h.textContent.trim(), indent: h.tagName === "H3" ? 1 : 0, hint: h.tagName.toLowerCase(), run: function () { jumpHeading(h); } });
     });
-    if (hs.length === 0) { notify("no headings in this page", true); return; }
+    if (hs.length === 0) { notify("no headings on this page", true); return; }
     openPicker("Headings", items);
   }
 
   // ------------------------------------------------------------------ overlays: help
   let helpEl = null;
   const HELP = [
-    ["Command bar", [["/  or  :", "open command bar"], ["Esc", "close menu, then bar"], ["Tab  or  →", "accept ghost completion"], ["↑ ↓  ^n ^p", "pick candidate"], ["Enter", "run line / chosen candidate"]]],
-    ["Leader  (Space)", [["Space f", "find article (fuzzy)"], ["Space s", "search:  /find …"], ["Space t", "tags & folders picker"], ["Space o", "headings of this article"], ["Space a", "/find about:… semantic"], ["Space h", "home"], ["Space T", "cycle theme"], ["Space ?", "this help"]]],
+    ["Command bar", [["/  or  :", "Open command bar"], ["Esc", "close menu, then bar"], ["Tab  or  →", "accept ghost completion"], ["↑ ↓  ^n ^p", "pick candidate"], ["Enter", "run line / chosen candidate"]]],
+    ["Leader  (Space)", [["Space f", "find article (fuzzy)"], ["Space s", "search:  /find …"], ["Space t", "tags & folders picker"], ["Space o", "headings of this article"], ["Space a", "/find about:… semantic"], ["Space h", "Home"], ["Space T", "cycle theme"], ["Space ?", "this help"]]],
     ["Jump", [["f", "flash: letter labels on headings / list items"], ["]]  [[", "next / previous heading"], ["H  L", "previous / next article in folder"]]],
     ["Scroll", [["j  k", "down / up ~3 lines (list pages: move cursor)"], ["^d  ^u", "half page down / up"], ["gg  G", "top / bottom"], ["Enter", "open item under cursor (list pages)"]]],
     ["Misc", [["?", "toggle this help"], ["Esc", "cancel / close overlay"]]],
@@ -292,10 +298,10 @@
     helpEl.className = "overlay help";
     helpEl.id = "help";
     helpEl.innerHTML =
-      '<div class="help-box" role="dialog" aria-modal="true" aria-label="Keys"><div class="picker-title">Keys · press Esc or ? to close</div><div class="help-cols">' +
+      '<div class="help-box" role="dialog" aria-modal="true" aria-label="' + esc(t("快捷键")) + '"><div class="picker-title">' + esc(t("快捷键 · Esc 或 ? 关闭")) + '</div><div class="help-cols">' +
       HELP.map(function (g) {
-        return '<section><h3>' + esc(g[0]) + "</h3><dl>" + g[1].map(function (r) {
-          return "<dt>" + r[0].split(/\s{2,}|\s+or\s+/).map(function (k) { return "<kbd>" + esc(k.trim()) + "</kbd>"; }).join(" ") + "</dt><dd>" + esc(r[1]) + "</dd>";
+        return '<section><h3>' + esc(t(g[0])) + "</h3><dl>" + g[1].map(function (r) {
+          return "<dt>" + r[0].split(/\s{2,}|\s+or\s+/).map(function (k) { return "<kbd>" + esc(k.trim()) + "</kbd>"; }).join(" ") + "</dt><dd>" + esc(t(r[1])) + "</dd>";
         }).join("") + "</dl></section>";
       }).join("") + "</div></div>";
     helpEl.addEventListener("mousedown", function (e) { if (e.target === helpEl) closeHelp(); });
@@ -308,14 +314,14 @@
 
   // ------------------------------------------------------------------ leader + which-key
   const LEADER = {
-    f: ["find article", pickArticle],
+    f: ["Find article", pickArticle],
     s: ["search  /find", function () { term().open("/find "); }],
-    t: ["tags & folders", pickTag],
-    o: ["headings (outline)", pickHeading],
+    t: ["tags & folders picker", pickTag],
+    o: ["Headings", pickHeading],
     a: ["semantic  about:", function () { term().open("/find about:"); }],
-    h: ["home", function () { go(document.querySelector(".sl-brand").getAttribute("href")); }],
+    h: ["Home", function () { go(document.querySelector(".sl-brand").getAttribute("href")); }],
     T: ["cycle theme", function () { term().cycleTheme(); }],
-    "?": ["help", showHelp],
+    "?": ["Help", showHelp],
   };
   let wkEl = null, wkTimer = 0;
   function startLeader() {
@@ -331,9 +337,9 @@
     wkEl.className = "whichkey";
     wkEl.id = "whichkey";
     wkEl.setAttribute("role", "status");
-    wkEl.innerHTML = '<div class="wk-title">SPC <span>leader</span></div><div class="wk-grid">' +
+    wkEl.innerHTML = '<div class="wk-title">SPC <span>' + esc(t("leader")) + '</span></div><div class="wk-grid">' +
       Object.keys(LEADER).map(function (k) {
-        return '<div class="wk-item"><kbd>' + esc(k) + '</kbd><span class="wk-arrow">➜</span><span>' + esc(LEADER[k][0]) + "</span></div>";
+        return '<div class="wk-item"><kbd>' + esc(k) + '</kbd><span class="wk-arrow">➜</span><span>' + esc(t(LEADER[k][0])) + "</span></div>";
       }).join("") + "</div>";
     document.body.appendChild(wkEl);
   }
@@ -455,7 +461,7 @@
       if (k === "Shift" || k === "Control") return;
       const hit = LEADER[k];
       endLeader();
-      if (hit) hit[1](); else notify("SPC " + k + " is not bound", true);
+      if (hit) hit[1](); else notify(t("SPC {0} 未绑定", k), true);
       return;
     }
     if (mode === "FLASH") {

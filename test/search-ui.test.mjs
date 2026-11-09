@@ -1,3 +1,4 @@
+import { t } from "../assets/messages.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -12,8 +13,8 @@ async function searchPage(q, unavailable = false) {
     setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; },
     addEventListener(k, fn) { this.handlers[k] = fn; },
   }]));
-  vm.runInNewContext(source, {
-    window: { __POSTS__: [] }, document: { getElementById: (id) => elements[id] },
+  vm.runInNewContext(source, { t,
+    window: { __POSTS__: [] }, document: { addEventListener() {}, getElementById: (id) => elements[id] },
     location: { search: "?q=" + encodeURIComponent(q), href: "http://localhost/search.html?q=" + encodeURIComponent(q) },
     history: { replaceState() {} }, URL, URLSearchParams,
     fetch: async () => { if (unavailable) throw new Error("internal connection details"); return { ok: true, json: async () => ({ docs: [], series: [] }) }; },

@@ -4,7 +4,7 @@ Minimal TUI static blog. One folder under `content/` = one series (a single post
 
 ## Browse & search
 
-The home page follows a cathedral ship from orbit, past the twin towers to the rose window of its archive. Scroll to approach or follow the masthead links directly to the Blog, About, and Guide windows. Blog contains the search form and collapsible folder contents. Expand a folder to open any article directly; article rows include estimated reading time. Search accepts a plain expression, `/find <expr>`, or `find <expr>` and uses the same result page as the command bar.
+The home page follows a cathedral ship in formation, past the twin towers and through the rose window into its archive cabin. Scroll to approach or follow the masthead links directly to the Blog, About, and Guide windows. Blog contains the search form and collapsible folder contents. Expand a folder to open any article directly; article rows include estimated reading time. Search accepts a plain expression, `/find <expr>`, or `find <expr>` and uses the same result page as the command bar.
 
 ## Keyboard & search
 
@@ -18,4 +18,4 @@ The command bar is hidden; `/` or `:` opens it, `Esc` closes it. `/find <expr>` 
 
 ## Home modules
 
-Set `homeRole` in a folder’s `series.json` to `help` or `about` to show it in that home window; omitted or `blog` stays in the Blog directory. An individual post’s JSON metadata can override its folder’s `homeRole` (the publishing guide uses `help`, while design notes use `about`). This changes presentation only: existing post URLs, command navigation, and the global search index remain intact. The camera uses SVG world coordinates from `src/archive-camera.mjs` and respects reduced motion.
+Set `homeRole` in a folder’s `series.json` to `help` or `about` to show it in that home window; omitted or `blog` stays in the Blog directory. An individual post’s JSON metadata can override its folder’s `homeRole` (the publishing guide uses `help`, while design notes use `about`). This changes presentation only: existing post URLs, command navigation, and the global search index remain intact. The status bar independently remembers the interface language (Chinese, English, Japanese or Greek) and the day/night theme. Notes and search queries retain their original text. Day and night light the same cabin differently. The satellite has a four-minute fictional orbit synchronized with wall time. The camera uses SVG world coordinates from `src/archive-camera.mjs` and respects reduced motion.

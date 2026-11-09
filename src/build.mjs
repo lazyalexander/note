@@ -6,6 +6,7 @@ import hljs from "highlight.js";
 import { loadContent } from "./content.mjs";
 import { partitionHomeSeries } from "./home-content.mjs";
 import { resolveTheme } from "./themes.mjs";
+import { formatMessage, languages } from "../assets/messages.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -59,8 +60,14 @@ function href(path) {
   return baseHref + path.replace(/^\//, "");
 }
 
+// Bind only interface strings. Titles, queries and article prose belong to their authors.
+function ui(source, ...values) {
+  const args = values.length ? ` data-values="${escapeHtml(JSON.stringify(values))}"` : "";
+  return `<span data-msg="${escapeHtml(source)}"${args}>${escapeHtml(formatMessage("zh", source, ...values))}</span>`;
+}
+
 function searchFieldHtml(id, feedbackId) {
-  return `<div class="search-box"><div class="home-search-field"><span aria-hidden="true">⌕</span><input id="${id}" aria-describedby="${feedbackId}" name="q" type="search" enterkeyhint="search" required placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button class="search-clear" type="button" aria-label="清空搜索" hidden>×</button><button type="submit">搜索 <span aria-hidden="true">↗</span></button></div></div>`;
+  return `<div class="search-box"><div class="home-search-field"><span aria-hidden="true">⌕</span><input id="${id}" aria-describedby="${feedbackId}" name="q" type="search" enterkeyhint="search" required data-msg-placeholder="find 关键词、标题或 tag:标签" placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button class="search-clear" type="button" data-msg-aria-label="清空搜索" aria-label="清空搜索" hidden>×</button><button type="submit">${ui("搜索")} <span aria-hidden="true">↗</span></button></div></div>`;
 }
 
 function termBarHtml() {
@@ -71,12 +78,12 @@ function termBarHtml() {
       <span class="prompt-label">$</span>
       <span class="term-field">
         <span class="term-ghost" id="term-ghost" aria-hidden="true"><span class="term-ghost-typed"></span><span class="term-ghost-rest"></span></span>
-        <input class="term-input" id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="输入 /find 关键词，或 /help 查看说明" aria-label="命令栏" aria-describedby="term-hint" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
+        <input class="term-input" id="term-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" data-msg-placeholder="输入 /find 关键词，或 /help 查看说明" placeholder="输入 /find 关键词，或 /help 查看说明" data-msg-aria-label="命令栏" aria-label="命令栏" aria-describedby="term-hint" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="suggest" aria-haspopup="listbox">
       </span>
       <kbd class="term-kbd" aria-hidden="true">Esc</kbd>
     </label>
     <div class="term-pop">
-      <p class="term-hint" id="term-hint">↑ ↓ 选择 · Tab 补全 · Enter 执行 · Esc 收起</p>
+      <p class="term-hint" id="term-hint">${ui("↑ ↓ 选择 · Tab 补全 · Enter 执行 · Esc 收起")}</p>
       <pre class="term-echo" id="term-echo" role="status" aria-live="polite" aria-atomic="true" hidden></pre>
       <ul class="suggest" id="suggest" role="listbox" hidden></ul>
     </div>
@@ -86,20 +93,21 @@ function termBarHtml() {
 
 function statuslineHtml() {
   return `<footer class="statusline" id="statusline">
-  <span class="sl-mode" id="sl-mode" data-mode="NORMAL">NORMAL</span>
-  <a class="sl-brand" href="${href("")}" title="首页 (Space h)">n note</a>
+  <span class="sl-mode" id="sl-mode" data-mode="NORMAL" data-msg="NORMAL">常规</span>
+  <a class="sl-brand" href="${href("")}" data-msg-title="首页 (Space h)" title="首页 (Space h)">n note</a>
   <span class="sl-pending" id="sl-pending"></span>
   <span class="sl-msg" id="sl-msg" role="status" aria-live="polite"></span>
   <span class="sl-spacer"></span>
-  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="切换主题" title="切换主题（Space T · day / tokyo）">◐</button>
-  <button class="sl-btn" id="sl-cmd" type="button" title="打开命令栏"><kbd>/</kbd> 命令</button>
-  <button class="sl-btn" id="sl-help" type="button" title="快捷键"><kbd>?</kbd> 帮助</button>
+  <select id="ui-language" data-msg-aria-label="语言" aria-label="语言">${Object.entries(languages).map(([code, name]) => `<option value="${code}" lang="${code}">${name}</option>`).join("")}</select>
+  <button class="theme-toggle" id="theme-toggle" type="button" data-msg-aria-label="切换主题" aria-label="切换主题" data-msg-title="切换主题（Space T · day / tokyo）" title="切换主题（Space T · day / tokyo）"><span class="night-choice">☾ ${ui("夜间")}</span><span class="day-choice">☀ ${ui("白天")}</span></button>
+  <button class="sl-btn" id="sl-cmd" type="button" data-msg-title="打开命令栏" title="打开命令栏"><kbd>/</kbd> ${ui("命令")}</button>
+  <button class="sl-btn" id="sl-help" type="button" data-msg-title="快捷键" title="快捷键"><kbd>?</kbd> ${ui("帮助")}</button>
 </footer>`;
 }
 
 function layout({ title, body, back, scripts, wide }) {
   const backLink = back
-    ? `<a class="back" href="${href("")}">&lt;-- back</a>`
+    ? `<a class="back" href="${href("")}">← ${ui("返回")}</a>`
     : "";
   const scriptTags = scripts || "";
   return `<!DOCTYPE html>
@@ -113,7 +121,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=48">
+<link rel="stylesheet" href="assets/style.css?v=49">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -124,8 +132,9 @@ ${body}
 <p class="footer">note // tui</p>
 </div>`}
 ${statuslineHtml()}
+<script type="module" src="assets/language.js?v=49"></script>
 ${scriptTags}
-<script type="module" src="assets/search-box.js?v=47"></script>
+<script type="module" src="assets/search-box.js?v=49"></script>
 </body>
 </html>
 `;
@@ -135,7 +144,9 @@ async function main() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
-  await cp(join(root, "assets", "cathedral-ship.webp"), join(distDir, "assets", "cathedral-ship.webp"));
+  for (const file of ["cathedral-ship.webp", "archive-day.webp", "archive-night.webp", "language.js", "messages.mjs"]) {
+    await cp(join(root, "assets", file), join(distDir, "assets", file));
+  }
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
@@ -156,6 +167,8 @@ async function main() {
   }
   const engineBundle = [
     "/** Auto-bundled from text-scrub + tag-match + about + query + commands-list + complete + term-engine. */",
+    'import { t } from "./messages.mjs?v=49";',
+    "export { t };",
     themesSrc.trim(),
     scrubSrc.trim(),
     stripImports(tagSrc).trim(),
@@ -233,24 +246,24 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=47"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=47"></script>`;
+<script type="module" src="assets/terminal.js?v=49"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=49"></script>`;
   const scripts = `${dataScript}
 <script src="assets/reader.js?v=47" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=47"></script>
+<script type="module" src="assets/search.js?v=49"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
   const eggScripts = `${scripts}
 <script src="assets/bad-apple/lz-string.min.js"></script>
-<script src="assets/bad-apple/player.js?v=1"></script>`;
+<script type="module" src="assets/bad-apple/player.js?v=49"></script>`;
   const eggBody = `<div class="box egg-box"><div class="box-title">~/lost · bad apple</div><div class="box-body">
 <p class="egg-msg">no such file — ascii radio instead</p>
 <p id="ba-status">…</p>
-<button type="button" id="play-button">Play</button>
+<button type="button" id="play-button">${ui("Play")}</button>
 <div class="ba-wrap"><pre id="ascii-display"></pre></div>
 <audio id="audio-player" preload="auto">
   <source src="assets/bad-apple/bad_apple.mp3" type="audio/mpeg">
@@ -258,7 +271,7 @@ ${navScript}`;
 <p class="ba-credit">ASCII player adapted from <a href="https://github.com/EmirXK/bad_apple" target="_blank" rel="noopener noreferrer">EmirXK/bad_apple</a> (MIT). Animation: Bad Apple!! feat. nomico.</p>
 </div></div>
 <div class="box egg-box" style="margin-top:1rem"><div class="box-title">assets/term-engine.js</div><div class="box-body">
-<p class="egg-msg">source · <a href="assets/term-engine.js">raw file</a></p>
+<p class="egg-msg">source · <a href="assets/term-engine.js">${ui("raw file")}</a></p>
 <pre class="egg-source"><code>${escapeHtml(engineSrc)}</code></pre>
 </div></div>`;
   await writeFile(
@@ -290,35 +303,35 @@ ${navScript}`;
     const prev = sp[idx - 1];
     const next = sp[idx + 1];
     const pager = `<nav class="pager">${
-      prev ? `<a class="prev" href="posts/${prev.outName}"><small>上一篇</small><span>${escapeHtml(prev.title)}</span></a>` : "<span></span>"
+      prev ? `<a class="prev" href="posts/${prev.outName}"><small>${ui("上一篇")}</small><span>${escapeHtml(prev.title)}</span></a>` : "<span></span>"
     }${
-      next ? `<a class="next" href="posts/${next.outName}"><small>下一篇</small><span>${escapeHtml(next.title)}</span></a>` : "<span></span>"
+      next ? `<a class="next" href="posts/${next.outName}"><small>${ui("下一篇")}</small><span>${escapeHtml(next.title)}</span></a>` : "<span></span>"
     }</nav>`;
     const body = `<div class="reading-progress"><div></div></div>
 <div class="reader-grid">
   <aside class="chapter-rail">
-    <a class="back-to-book" href="${href("")}">← 目录</a>
+    <a class="back-to-book" href="${href("")}">${ui("← 目录")}</a>
     <div class="rail-series">${escapeHtml(post.series.title)}</div>
     ${post.series.description ? `<p class="rail-desc">${escapeHtml(post.series.description)}</p>` : ""}
-    <nav class="chapter-navigation" aria-label="本文件夹下的文章">
+    <nav class="chapter-navigation" data-msg-aria-label="本文件夹下的文章" aria-label="本文件夹下的文章">
 ${railHtml(post)}
     </nav>
   </aside>
   <main class="reading-main">
-    <div class="reader-topline"><a href="${href("")}">首页</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">约 ${post.minutes} 分钟阅读</span></div>
+    <div class="reader-topline"><a href="${href("")}">${ui("首页")}</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">${ui("约 {0} 分钟阅读", post.minutes)}</span></div>
     <header class="chapter-heading">
       <p class="eyebrow"><span class="chapter-badge">${n}</span>${escapeHtml(post.stem)}.md</p>
       <h1>${escapeHtml(post.title)}</h1>
       ${tagsHtml}
     </header>
-    ${outlineHtml ? `<details class="mobile-outline"><summary><span>本文内容</span></summary><nav>${outlineHtml}</nav></details>` : ""}
+    ${outlineHtml ? `<details class="mobile-outline"><summary><span>${ui("本文内容")}</span></summary><nav>${outlineHtml}</nav></details>` : ""}
     <article class="post prose">${post.htmlBody}</article>
     ${pager}
     <p class="footer">note // tui</p>
   </main>
   <aside class="outline-rail">
-    ${outlineHtml ? `<div class="rail-label">本文内容</div><nav class="section-outline" aria-label="本文内容">\n${outlineHtml}\n</nav>` : ""}
-    <a class="back-to-top" href="#top">↑ 回到顶部</a>
+    ${outlineHtml ? `<div class="rail-label">${ui("本文内容")}</div><nav class="section-outline" data-msg-aria-label="本文内容" aria-label="本文内容">\n${outlineHtml}\n</nav>` : ""}
+    <a class="back-to-top" href="#top">${ui("↑ 回到顶部")}</a>
   </aside>
 </div>`;
     const page = layout({ title: post.title, body, back: false, scripts, wide: true });
@@ -337,8 +350,8 @@ ${railHtml(post)}
   const seriesHtml = `<ul class="folders">${homeGroups.blog
     .map((s) => {
       const desc = s.description ? `<span class="folder-desc">${escapeHtml(s.description)}</span>` : "";
-      const articles = s.posts.map((p, i) => `<li><a class="home-post" data-nav href="posts/${p.outName}"><span class="home-post-number">${String(i + 1).padStart(2, "0")}</span><span class="home-post-title">${escapeHtml(p.title)}</span><span class="home-post-time">${p.minutes} 分钟</span></a></li>`).join("\n");
-      return `<li><details class="folder-group"><summary class="folder" data-nav><span class="folder-chevron" aria-hidden="true">›</span><span class="folder-body"><span class="folder-name">${escapeHtml(s.title)}</span>${desc}</span><span class="folder-count">${s.posts.length} 篇</span></summary><ul class="home-posts">${articles}</ul></details></li>`;
+      const articles = s.posts.map((p, i) => `<li><a class="home-post" data-nav href="posts/${p.outName}"><span class="home-post-number">${String(i + 1).padStart(2, "0")}</span><span class="home-post-title">${escapeHtml(p.title)}</span><span class="home-post-time">${ui("{0} 分钟", p.minutes)}</span></a></li>`).join("\n");
+      return `<li><details class="folder-group"><summary class="folder" data-nav><span class="folder-chevron" aria-hidden="true">›</span><span class="folder-body"><span class="folder-name">${escapeHtml(s.title)}</span>${desc}</span><span class="folder-count">${ui("{0} 篇", s.posts.length)}</span></summary><ul class="home-posts">${articles}</ul></details></li>`;
     })
     .join("\n")}</ul>`;
 
@@ -347,53 +360,79 @@ ${railHtml(post)}
   }
   const indexBody = `<main class="home library archive-world" id="archive-world">
 <div class="archive-stage" aria-hidden="true">
-  <div class="star-field"><div class="orbital-arc"></div><div class="archive-moon"></div></div>
+  <div class="star-field">
+    <div class="orbital-arc"></div>
+    <svg class="archive-moon" viewBox="0 0 100 100" focusable="false">
+      <defs>
+        <radialGradient id="moon-dark" cx="36%" cy="28%" r="70%"><stop stop-color="var(--orbit)"/><stop offset="1" stop-color="var(--moon-shadow)"/></radialGradient>
+        <radialGradient id="moon-sun" cx="32%" cy="26%" r="75%"><stop stop-color="#f6efff"/><stop offset=".62" stop-color="#baa1ce"/><stop offset="1" stop-color="#776289"/></radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="48" fill="url(#moon-dark)"/>
+      <path id="moon-light" fill="url(#moon-sun)" d="M50 2a48 48 0 0 1 0 96a35 48 0 0 0 0-96"/>
+      <g fill="var(--orbit)" opacity=".28"><circle cx="67" cy="29" r="5"/><circle cx="65" cy="67" r="9"/><circle cx="38" cy="48" r="4"/></g>
+    </svg>
+  </div>
   <svg class="ship-plate" viewBox="0 0 1536 1024" focusable="false">
+    <defs>
+      <linearGradient id="exhaust"><stop stop-color="#9b51e8" stop-opacity="0"/><stop offset=".55" stop-color="#ba6aee" stop-opacity=".72"/><stop offset=".88" stop-color="#ffe0e8"/><stop offset="1" stop-color="white"/></linearGradient>
+      <g id="plume"><path d="M0 -12 Q-52 -20 -168 -37 Q-75 -8 0 12Z" fill="url(#exhaust)"/><path d="M0 -6 L-99 -24 L0 5Z" fill="url(#exhaust)"/></g>
+      <g id="archive-vessel">
+        <g class="thrusters">
+          <g transform="translate(119 304)"><use class="engine-flame" href="#plume"/></g>
+          <g transform="translate(86 352)"><use class="engine-flame second" href="#plume"/></g>
+          <g transform="translate(73 425)"><use class="engine-flame third" href="#plume"/></g>
+        </g>
+        <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
+      </g>
+    </defs>
+    <g class="escorts"><use class="escort lead" href="#archive-vessel"/><use class="escort aft" href="#archive-vessel"/></g>
     <g class="archive-camera">
-      <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
+      <use href="#archive-vessel"/>
       <g class="chapel-callout">
         <path d="M800 600 L726 881 H520" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/>
         <circle cx="800" cy="600" r="5" fill="currentColor"/>
-        <text x="520" y="862" fill="currentColor">档案舱</text>
+        <text x="520" y="862" fill="currentColor" data-msg="档案舱">档案舱</text>
       </g>
     </g>
   </svg>
+  <div class="cabin-scene"></div>
 </div>
-<section class="archive-journey" aria-labelledby="archive-title">
+<section class="archive-journey" id="fleet" aria-labelledby="archive-title">
   <div class="archive-arrival">
     <header class="archive-masthead">
       <span class="site-signature">~/note</span>
-      <nav aria-label="首页模块"><a href="#notebook">Blog 正文</a><a href="#site-about">关于本站</a><a href="#site-help">使用说明</a></nav>
+      <nav data-msg-aria-label="首页模块" aria-label="首页模块"><a href="#notebook">${ui("Blog 正文")}</a><a href="#site-about">${ui("关于本站")}</a><a href="#site-help">${ui("使用说明")}</a></nav>
     </header>
-    <h1 id="archive-title">舰上手记</h1>
+    <h1 id="archive-title">${ui("舰上手记")}</h1>
     <p class="archive-subtitle" lang="en">Shipboard notes</p>
-    <a class="archive-cue" href="#archive-desk"><span class="descent-arrow" aria-hidden="true">↓</span>进入档案舱</a>
+    <a class="archive-cue" href="#archive-desk"><span class="descent-arrow" aria-hidden="true">↓</span>${ui("进入档案舱")}</a>
   </div>
 </section>
 <div class="archive-desk" id="archive-desk">
+  <a class="fleet-return" href="#fleet">↑ ${ui("返回舰队")}</a>
   <div class="desk-grid">
     <section class="notebook-window blog-window" id="notebook" aria-labelledby="notebook-title">
-      <div class="library-heading"><h2 id="notebook-title">Blog / 正文</h2><span>${blogPosts.length} 篇 · ${homeGroups.blog.length} 个文件夹</span></div>
+      <div class="library-heading"><h2 id="notebook-title">${ui("Blog / 正文")}</h2><span>${ui("{0} 篇 · {1} 个文件夹", blogPosts.length, homeGroups.blog.length)}</span></div>
       <div class="notebook-content">
         <form class="home-search" action="search.html" method="get" role="search">
-          <label for="home-query">搜索笔记</label>
+          <label for="home-query">${ui("搜索笔记")}</label>
           ${searchFieldHtml("home-query", "home-search-feedback")}
-          <p class="search-hint">find 关键词 · 搜索范围包含正文、使用说明和关于本站。</p>
+          <p class="search-hint">${ui("find 关键词 · 搜索范围包含正文、使用说明和关于本站。")}</p>
           <p id="home-search-feedback" class="search-feedback" role="status" hidden></p>
         </form>
-        <div class="notebook-directory">文章目录</div>
+        <div class="notebook-directory">${ui("文章目录")}</div>
         ${seriesHtml}
-        <p class="library-help">展开文件夹，选择一篇开始阅读。</p>
+        <p class="library-help">${ui("展开文件夹，选择一篇开始阅读。")}</p>
       </div>
     </section>
     <div class="desk-sidebar">
       <section class="notebook-window info-window" id="site-about" aria-labelledby="about-title">
-        <div class="library-heading"><h2 id="about-title">关于本站</h2><span>ABOUT</span></div>
-        <div class="notebook-content"><p>一个存放文字、想法和阅读片段的私人档案室。</p><p class="info-caption">设计与来由</p><ul class="info-links">${infoLinks(homeGroups.about)}</ul></div>
+        <div class="library-heading"><h2 id="about-title">${ui("关于本站")}</h2><span aria-hidden="true" lang="en">ABOUT</span></div>
+        <div class="notebook-content"><p>${ui("一个存放文字、想法和阅读片段的私人档案室。")}</p><p class="info-caption">${ui("设计与来由")}</p><ul class="info-links">${infoLinks(homeGroups.about)}</ul></div>
       </section>
       <section class="notebook-window info-window" id="site-help" aria-labelledby="help-title">
-        <div class="library-heading"><h2 id="help-title">使用说明</h2><span>GUIDE</span></div>
-        <div class="notebook-content"><dl class="desk-shortcuts"><dt><kbd>/</kbd></dt><dd>打开命令栏</dd><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>选择搜索建议</dd><dt><kbd>Enter</kbd></dt><dd>搜索或打开选中项</dd><dt><kbd>Esc</kbd></dt><dd>收起建议与命令栏</dd></dl><ul class="info-links">${infoLinks(homeGroups.help)}</ul></div>
+        <div class="library-heading"><h2 id="help-title">${ui("使用说明")}</h2><span aria-hidden="true" lang="en">GUIDE</span></div>
+        <div class="notebook-content"><dl class="desk-shortcuts"><dt><kbd>/</kbd></dt><dd>${ui("打开命令栏")}</dd><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>${ui("选择搜索建议")}</dd><dt><kbd>Enter</kbd></dt><dd>${ui("搜索或打开选中项")}</dd><dt><kbd>Esc</kbd></dt><dd>${ui("收起建议与命令栏")}</dd></dl><ul class="info-links">${infoLinks(homeGroups.help)}</ul></div>
       </section>
     </div>
   </div>
@@ -403,17 +442,17 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: scripts + '\n<script type="module" src="assets/archive-scroll.js?v=48"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=49"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">
   <p class="sr-prompt"><span class="sr-dollar">$</span> <span class="sr-cmd">/find</span> <span class="sr-expr" id="sr-expr"></span></p>
   <form class="home-search sr-search" action="search.html" method="get" role="search">
-    <label for="search-query">搜索笔记</label>
+    <label for="search-query">${ui("搜索笔记")}</label>
     ${searchFieldHtml("search-query", "search-feedback")}
     <p id="search-feedback" class="search-feedback" role="status" hidden></p>
   </form>
-  <p class="sr-summary" id="sr-summary">searching…</p>
+  <p class="sr-summary" id="sr-summary">${ui("搜索中…")}</p>
   <p class="sr-notes" id="sr-notes"></p>
 </section>
 <div id="sr-root"><noscript><p class="sr-empty">搜索需要 JavaScript。</p></noscript></div>

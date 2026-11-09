@@ -1,5 +1,9 @@
 /** Auto-bundled from text-scrub + tag-match + about + query + commands-list + complete + term-engine. */
 
+import { t } from "./messages.mjs?v=49";
+
+export { t };
+
 export const THEME_NAMES = ["day", "tokyo"];
 export const THEME_HINTS = { day: "白天 · 紫白", tokyo: "夜间 · 夜紫" };
 
@@ -1175,7 +1179,7 @@ function selectorItems(base, partial, items, seen) {
 }
 
 function folderHint(s) {
-  return `${s.title} · ${s.count} 篇`;
+  return `${s.title} · ${t("{0} 篇", s.count)}`;
 }
 
 /** Index of the first candidate that literally continues what was typed (its remainder is the ghost text). */
@@ -1346,26 +1350,26 @@ export function createTermEngine(options = {}) {
   function submit(raw) {
     const line = scrubInvisible(raw).trim();
     if (!line) return { type: "noop" };
-    if (line === "/" || line === ":") return { type: "echo", message: "输入 /find 关键词 搜索笔记，或 /help 查看命令说明。", err: false };
+    if (line === "/" || line === ":") return { type: "echo", message: t("输入 /find 关键词 搜索笔记，或 /help 查看命令说明。"), err: false };
     const parsed = parseLine(raw, knownTags);
 
-    if (parsed.kind === "echo") return { type: "echo", message: parsed.message, err: true };
+    if (parsed.kind === "echo") return { type: "echo", message: t(parsed.message), err: true };
     if (parsed.kind === "help") {
       const post = findHelpPost(posts);
-      if (!post) return { type: "echo", message: "未找到命令说明文章。", err: true };
+      if (!post) return { type: "echo", message: t("未找到命令说明文章。"), err: true };
       return { type: "navigate", post };
     }
     if (parsed.kind === "clear") return { type: "clear" };
     if (parsed.kind === "lost") return { type: "navigate", post: EGG_POST, egg: true };
 
     if (parsed.kind === "find") {
-      if (!parsed.query) return { type: "echo", message: USAGE[parsed.cmd], err: true };
+      if (!parsed.query) return { type: "echo", message: t(USAGE[parsed.cmd]), err: true };
       const r = parseQuery(parsed.query);
       if (!r.ok) {
         const shown = parsed.query === parsed.arg ? "" : "\n(as /find " + parsed.query + ")";
-        return { type: "echo", message: "表达式有误 · " + formatQueryError(parsed.query, r.error) + shown + "\n请修改标记处后重试；/help 可查看语法。", err: true };
+        return { type: "echo", message: t("表达式有误") + " · " + t(describeQueryError(r.error)) + "\n" + formatQueryError(parsed.query, r.error) + shown + "\n" + t("请修改标记处后重试；/help 可查看语法。"), err: true };
       }
-      if (!r.ast) return { type: "echo", message: USAGE[parsed.cmd], err: true };
+      if (!r.ast) return { type: "echo", message: t(USAGE[parsed.cmd]), err: true };
       return { type: "search", cmd: parsed.cmd, query: parsed.query, href: searchHref(parsed.query) };
     }
 
@@ -1373,14 +1377,14 @@ export function createTermEngine(options = {}) {
       if (!parsed.name || !THEMES.includes(parsed.name)) {
         return {
           type: "echo",
-          message: (parsed.name ? "未知主题：" + parsed.name + "。\n" : "") + "用法：/theme day（白天）| tokyo（夜间）",
+          message: (parsed.name ? t("未知主题：{0}。", parsed.name) + "\n" : "") + t("用法：/theme day（白天）| tokyo（夜间）"),
           err: !!parsed.name,
         };
       }
       return { type: "theme", name: parsed.name };
     }
 
-    return { type: "echo", message: "未知命令：" + line + "\n可用命令：/find 搜索 · /theme 主题 · /help 说明。搜索文字请写成 /find " + line, err: true };
+    return { type: "echo", message: t("未知命令：{0}", line) + "\n" + t("可用命令：/find 搜索 · /theme 主题 · /help 说明。搜索文字请写成 /find {0}", line), err: true };
   }
 
   return {

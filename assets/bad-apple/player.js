@@ -1,3 +1,4 @@
+import { t } from "../messages.mjs?v=49";
 /* Adapted from EmirXK/bad_apple (MIT) — ASCII Bad Apple player */
 (function () {
   "use strict";
@@ -10,8 +11,10 @@
   const statusEl = document.getElementById("ba-status");
   if (!asciiDisplay || !audioPlayer || !playButton) return;
 
-  function setStatus(msg) {
-    if (statusEl) statusEl.textContent = msg || "";
+  function setStatus(msg, ...values) {
+    statusEl.dataset.msg = msg;
+    statusEl.dataset.values = JSON.stringify(values);
+    statusEl.textContent = t(msg, ...values);
   }
 
   function framesUrl() {
@@ -35,7 +38,7 @@
     })
     .catch(function (err) {
       console.error(err);
-      setStatus("failed to load frames: " + (err && err.message ? err.message : err));
+      setStatus("画面加载失败：{0}", err.message || String(err));
     });
 
   function init(framesData) {

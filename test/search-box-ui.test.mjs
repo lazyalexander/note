@@ -1,3 +1,4 @@
+import { t } from "../assets/messages.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
@@ -8,7 +9,7 @@ const source = (await readFile(new URL("../assets/search-box.js", import.meta.ur
 function setup() {
   const doc = {}, timers = [], storage = new Map();
   class Element {
-    constructor() { this.children = []; this.attrs = {}; this.handlers = {}; this.value = ""; this.hidden = false; this.classList = { toggle() {} }; }
+    constructor() { this.children = []; this.dataset = {}; this.attrs = {}; this.handlers = {}; this.value = ""; this.hidden = false; this.classList = { toggle() {} }; }
     setAttribute(k, v) { this.attrs[k] = v; }
     getAttribute(k) { return this.attrs[k]; }
     removeAttribute(k) { delete this.attrs[k]; }
@@ -26,7 +27,7 @@ function setup() {
   form.querySelector = (selector) => selector === 'input[name="q"]' ? input : selector === ".search-clear" ? clear : field;
   form.requestSubmit = () => { if (!form.fire("submit").defaultPrevented) submitted++; };
   Object.assign(doc, { querySelectorAll: () => [form], createElement: () => new Element(), getElementById: () => feedback });
-  vm.runInNewContext(source, { document: doc, window: { __POSTS__: [{ title: "心跳", stem: "heart", tags: [] }] },
+  vm.runInNewContext(source, { t, document: doc, window: { __POSTS__: [{ title: "心跳", stem: "heart", tags: [] }] },
     localStorage: { getItem: (k) => storage.get(k), setItem: (k, v) => storage.set(k, v) },
     setTimeout: (fn) => { timers.push(fn); return timers.length; }, clearTimeout() {},
     buildSearchSuggestions, normalizeSearchInput, parseQuery, describeQueryError });

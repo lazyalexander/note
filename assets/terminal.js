@@ -1,5 +1,5 @@
 import {
-  createTermEngine,
+  t, createTermEngine,
   THEME_NAMES,
   complete,
   formatQueryError,
@@ -9,7 +9,7 @@ import {
   searchDocs,
   hasAbout,
   scrubInvisible,
-} from "./term-engine.js?v=47";
+} from "./term-engine.js?v=49";
 
 /**
  * Command bar. Hidden by default; nav.js (or the statusline button) opens it with "/" or ":".
@@ -113,9 +113,9 @@ import {
       li.setAttribute("aria-selected", i === selected ? "true" : "false");
       li.innerHTML =
         '<span class="suggest-marker">' + (i === selected ? "\u25B8" : " ") + "</span>" +
-        '<span class="suggest-kind k-' + it.kind + '">' + kindLabel(it.kind) + "</span>" +
+        '<span class="suggest-kind k-' + it.kind + '">' + escapeHtml(t(kindLabel(it.kind))) + "</span>" +
         '<span class="suggest-title">' + escapeHtml(it.label) + "</span>" +
-        (it.hint ? '<span class="suggest-stem">' + escapeHtml(it.hint) + "</span>" : "");
+        (it.hint ? '<span class="suggest-stem">' + escapeHtml(it.kind === "post" || it.kind === "folder" ? it.hint : t(it.hint)) + "</span>" : "");
       li.addEventListener("mouseenter", function () { selected = i; markActive(); });
       li.addEventListener("mousedown", function (e) { e.preventDefault(); selected = i; activate(); });
       suggest.appendChild(li);
@@ -156,7 +156,7 @@ import {
         .catch(function () {
           indexPromise = null;
           if (isOpen && !composing && echo.dataset.live === "1" && engine.parseLine(input.value).kind === "find") {
-            setEcho("暂时无法加载搜索索引，请检查连接后重试。", true);
+            setEcho(t("暂时无法加载搜索索引，请检查连接后重试。"), true);
           }
         });
     }
@@ -169,10 +169,10 @@ import {
       if (!docs) { ensureIndex(); return; }
       const r = searchDocs(docs, p.query);
       const rewritten = p.query !== p.arg ? "= /find " + p.query + " · " : "";
-      if (!r.ok) setEcho("表达式有误 · " + formatQueryError(p.query, r.error), true);
+      if (!r.ok) setEcho(t("表达式有误") + " · " + t(describeQueryError(r.error)) + "\n" + formatQueryError(p.query, r.error), true);
       else if (r.empty) setEcho("");
-      else if (hasAbout(r.ast)) setEcho(rewritten + "含语义项 about: · Enter 查看结果页（首次需加载模型）");
-      else setEcho(rewritten + r.results.length + " 篇匹配 · Enter 查看结果页");
+      else if (hasAbout(r.ast)) setEcho(rewritten + t("含语义项 about: · Enter 查看结果页（首次需加载模型）"));
+      else setEcho(rewritten + t("{0} 篇匹配 · Enter 查看结果页", r.results.length));
     } else if (echo.dataset.live === "1") setEcho("");
   }
 
@@ -195,6 +195,11 @@ import {
     renderGhost();
   }
 
+  document.addEventListener("note:language", () => {
+    if (slMsg) slMsg.textContent = "";
+    if (isOpen && !composing) refresh();
+  });
+
   // ---------------------------------------------------------------- actions
   function go(href) {
     if (!engine.beginNavigate()) return;
@@ -206,7 +211,7 @@ import {
   function setTheme(name) {
     try { localStorage.setItem("note-theme", name); } catch (e) {}
     if (window.__applyTheme) window.__applyTheme();
-    notify("theme · " + name);
+    notify(t("主题 · {0}", name));
   }
   function cycleTheme() {
     const cur = document.documentElement.getAttribute("data-theme") || "tokyo";
@@ -227,7 +232,7 @@ import {
       setTheme(action.name);
       input.value = "";
       refresh();
-      setEcho("theme · " + action.name);
+      setEcho(t("主题 · {0}", action.name));
       return;
     }
     if (action.type === "search") { remember(line); go(action.href); return; }
@@ -311,7 +316,7 @@ import {
       const result = parseQuery(query);
       if (!result.ok || !query.trim()) {
         e.preventDefault();
-        homeFeedback.textContent = result.ok ? "先输入一个关键词，例如 find 心跳。" : describeQueryError(result.error);
+        homeFeedback.textContent = t(result.ok ? "先输入一个关键词，例如 find 心跳。" : describeQueryError(result.error));
         homeFeedback.hidden = false;
         homeInput.setAttribute("aria-invalid", "true");
         homeInput.focus();

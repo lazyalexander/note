@@ -1054,14 +1054,12 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 .orbital-arc { position: absolute; top: 19%; left: 13%; width: 105%; height: 59%; border: 1px solid var(--orbit); border-radius: 50%; transform: rotate(-19deg); opacity: .52; }
 .archive-moon {
   position: absolute; left: 80%; top: 17%; width: clamp(2.8rem, 5.5vw, 6.5rem); aspect-ratio: 1;
-  border-radius: 50%; transform: rotate(-29deg); overflow: hidden;
-  background: radial-gradient(ellipse at 72% 43%, var(--sky) 56%, var(--orbit) 62%, var(--star) 92%);
-  box-shadow: inset 1px 0 0 var(--star);
+  transform: rotate(-29deg);
 }
 .ship-plate { position: absolute; left: 23%; top: 12%; width: 75%; height: 79%; overflow: visible; }
 .chapel-callout { color: var(--fg-dim); opacity: clamp(0, 1 - var(--approach, 0) * 4, 1); }
 .chapel-callout text { font: 21px var(--read-serif); letter-spacing: .14em; }
-.archive-journey { height: 185svh; position: relative; }
+.archive-journey { height: 227svh; position: relative; }
 .archive-arrival { position: relative; height: calc(100svh - var(--sl-h)); max-width: 84rem; margin: 0 auto; padding-top: clamp(1rem, 3.5vh, 2.5rem); }
 .archive-masthead { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .65rem; }
 .site-signature { font: italic 1.5rem/1 var(--read-serif); color: var(--fg); }
@@ -1110,4 +1108,61 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .archive-journey { height: 100svh; }
+}
+
+/* Fleet formation and the inhabited archive beyond the rose window. */
+.archive-stage { --moon-shadow: #292138; --cabin-art: url("archive-night.webp"); }
+:root[data-theme="day"] .archive-stage { --moon-shadow: #c9bbd6; --cabin-art: url("archive-day.webp"); }
+.star-field::before, .star-field::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, var(--star) 1px, transparent 1.8px);
+  background-size: 137px 103px; background-position: 32px 16px;
+  animation: starlight 5.8s ease-in-out infinite alternate;
+}
+.star-field::after { background-size: 193px 157px; background-position: 70px 52px; animation-duration: 8.3s; animation-delay: -3s; }
+@keyframes starlight { from { opacity: .12; } to { opacity: .85; } }
+.escorts { opacity: clamp(0, .8 - var(--approach, 0) * 1.25, .8); }
+.escort.lead { transform: translate(816px, 15px) scale(.20); opacity: .72; }
+.escort.aft { transform: translate(-310px, 673px) scale(.26); }
+.engine-flame { animation: engine-burn 920ms ease-in-out infinite alternate; }
+.engine-flame.second { animation-delay: -.55s; animation-duration: 1.15s; }
+.engine-flame.third { animation-delay: -.32s; animation-duration: .84s; }
+@keyframes engine-burn { from { transform: scale(.8, .88); opacity: .75; } to { transform: scale(1.16, 1.04); opacity: 1; } }
+.cabin-scene {
+  position: absolute; inset: 0; opacity: var(--entry, 0);
+  background: var(--sky) var(--cabin-art) 65% 45% / cover no-repeat;
+}
+.in-cabin :is(.star-field, .ship-plate) { visibility: hidden; }
+.in-cabin .engine-flame, .in-cabin .star-field::before, .in-cabin .star-field::after { animation-play-state: paused; }
+.archive-desk { min-height: calc(100svh - var(--sl-h)); padding-top: 1rem; }
+.fleet-return { display: inline-flex; align-items: center; gap: .6em; margin: 0 0 .8rem; padding: .4rem .75rem; min-height: 40px; font-size: .8rem; background: var(--bg-elev); border: 1px solid var(--border); }
+#ui-language { min-width: 0; max-width: 6.7rem; font: inherit; color: var(--fg); background: var(--bg-elev); border: 1px solid var(--border); }
+:root:lang(en) .archive-subtitle { display: none; }
+:root:is(:lang(en), :lang(el)) .archive-arrival h1 { max-width: 8em; font-size: clamp(2.5rem, 4.5vw, 5rem); }
+@media (max-aspect-ratio: 1/1) {
+  .escort.lead { transform: translate(1020px, -135px) scale(.22); }
+  .escort.aft { transform: translate(60px, 890px) scale(.28); }
+}
+@media (max-width: 600px) {
+  .archive-masthead nav { gap: .55rem; text-align: end; }
+  #ui-language { max-width: 4.7rem; }
+  .archive-masthead a { font-size: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .archive-journey { height: 100svh; }
+  .engine-flame, .star-field::before, .star-field::after { animation: none; }
+}
+@media (scripting: none) {
+  #ui-language { display: none; }
+  .archive-desk { background: url("archive-night.webp") center / cover; }
+  :root[data-theme="day"] .archive-desk { background-image: url("archive-day.webp"); }
+}
+.statusline .theme-toggle { width: auto; padding-inline: .32rem; white-space: nowrap; font: inherit; }
+:root[data-theme="day"] .day-choice, :root[data-theme="tokyo"] .night-choice { display: none; }
+@media (max-width: 600px) {
+  :root { --sl-h: 2.75rem; }
+  .statusline { gap: .3rem; }
+  .statusline .sl-btn, .statusline .theme-toggle, #ui-language { min-height: 36px; white-space: nowrap; }
+  .statusline .theme-toggle { min-width: 36px; }
+  .statusline .sl-btn kbd, .theme-toggle [data-msg] { display: none; }
 }

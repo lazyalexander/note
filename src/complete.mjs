@@ -1,3 +1,4 @@
+import { t } from "../assets/messages.mjs";
 /**
  * Command-bar completion (pure, no DOM). Sources in priority order:
  *   command names → folders → term prefixes (tag: grep: about: …) → tags → post titles → history.
@@ -224,7 +225,7 @@ function selectorItems(base, partial, items, seen) {
 }
 
 function folderHint(s) {
-  return `${s.title} · ${s.count} 篇`;
+  return `${s.title} · ${t("{0} 篇", s.count)}`;
 }
 
 /** Index of the first candidate that literally continues what was typed (its remainder is the ghost text). */

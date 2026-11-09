@@ -1,4 +1,4 @@
-import { buildSearchSuggestions, normalizeSearchInput, parseQuery, describeQueryError } from "./term-engine.js?v=47";
+import { t, buildSearchSuggestions, normalizeSearchInput, parseQuery, describeQueryError } from "./term-engine.js?v=49";
 
 const HISTORY_KEY = "note-search-history";
 const posts = window.__POSTS__ || [];
@@ -18,7 +18,8 @@ for (const form of document.querySelectorAll("form.home-search")) {
   list.id = input.id + "-suggestions";
   list.className = "search-suggestions";
   list.setAttribute("role", "listbox");
-  list.setAttribute("aria-label", "搜索建议");
+  list.setAttribute("data-msg-aria-label", "搜索建议");
+  list.setAttribute("aria-label", t("搜索建议"));
   list.hidden = true;
   form.querySelector(".home-search-field").after(list);
   input.setAttribute("role", "combobox");
@@ -63,7 +64,7 @@ for (const form of document.querySelectorAll("form.home-search")) {
       row.setAttribute("aria-selected", "false");
       const label = document.createElement("span"), hint = document.createElement("small");
       label.textContent = item.label;
-      hint.textContent = item.hint;
+      hint.textContent = t(item.hint);
       row.append(label, hint);
       row.addEventListener("mouseenter", () => { selected = i; mark(); });
       row.addEventListener("mousedown", (e) => e.preventDefault());
@@ -128,7 +129,8 @@ for (const form of document.querySelectorAll("form.home-search")) {
     const result = parseQuery(q);
     if (!result.ok || !q.trim()) {
       e.preventDefault();
-      feedback.textContent = result.ok ? "先输入一个关键词，例如 find 心跳。" : describeQueryError(result.error);
+      feedback.dataset.msg = result.ok ? "先输入一个关键词，例如 find 心跳。" : describeQueryError(result.error);
+      feedback.textContent = t(feedback.dataset.msg);
       feedback.hidden = false;
       input.setAttribute("aria-invalid", "true");
       input.focus();

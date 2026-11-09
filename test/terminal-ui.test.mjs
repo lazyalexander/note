@@ -1,3 +1,4 @@
+import { t } from "../assets/messages.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -37,6 +38,7 @@ function terminal() {
   let id = 0;
   const window = { addEventListener() {}, location: { assign: (href) => navigated.push(href) } };
   const ctx = {
+    t,
     window, document: { querySelector: () => elements["home-form"], getElementById: (id) => elements[id], createElement: () => new Element(),
       addEventListener() {}, dispatchEvent() {} },
     localStorage: { getItem: () => null, setItem() {} },

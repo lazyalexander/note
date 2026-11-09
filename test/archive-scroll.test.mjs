@@ -132,7 +132,7 @@ test("non-home pages install no scene handlers", () => {
 
 test("the five remaining escorts each ship a distinct illustration", async () => {
   const files = [...fleetEscortsHtml().matchAll(/<image href="(assets\/fleet\/[^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(files.map((file) => file.split("/").pop()).sort(), ["carrier.webp", "clipper.webp", "courier.webp", "forge.webp", "tender.webp"]);
+  assert.deepEqual(files.map((file) => file.split("/").pop()).sort(), ["carrier.webp", "clipper.webp", "courier.webp", "rearguard.webp", "tender.webp"]);
   const plates = await Promise.all(files.map((file) => readFile(new URL("../" + file, import.meta.url))));
   assert.equal(new Set(plates.map((buffer) => buffer.toString("base64"))).size, files.length);
 });

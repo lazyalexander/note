@@ -3,7 +3,7 @@
 const escorts = [
   { hull: "carrier", wide: [35, 71, 23], tall: [37, 67, 34], nozzles: [[8, 147, .64], [7, 204, .72]], angle: 14, depth: 10 },
   { hull: "clipper", wide: [73, 34, 16], tall: [76, 24, 25], nozzles: [[11, 254, .52]], angle: 10, depth: 4 },
-  { hull: "forge",   wide: [21, 53, 15], tall: [19, 51, 22], nozzles: [[25, 154, .54], [19, 218, .62]], angle: 13, depth: 6 },
+  { hull: "rearguard", wide: [15.5, 50, 13.5], tall: [15.5, 48.5, 20], nozzles: [[20, 165, .54], [16, 227, .62]], angle: 11, depth: 4 },
   { hull: "courier", wide: [51, 22, 12], tall: [45, 14, 22], nozzles: [[8, 156, .46], [10, 200, .50]], angle: 9, depth: 2 },
   { hull: "tender",  wide: [68, 82, 18], tall: [78, 74, 27], nozzles: [[25, 175, .85]], angle: 15, depth: 7 },
 ];

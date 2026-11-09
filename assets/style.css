@@ -1124,7 +1124,7 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 .escorts { position: absolute; inset: 0; opacity: clamp(0, 1 - var(--approach, 0) * 1.28, 1); }
 .escort {
   position: absolute; left: var(--x); top: var(--y); width: var(--w); height: auto; overflow: visible;
-  opacity: calc(.48 + .05 * var(--depth));
+  opacity: calc(.80 + .018 * var(--depth));
   transform: translate(calc(-50% - 1vw * var(--depth) * var(--approach, 0)), -50%);
 }
 .engine-flame { animation: engine-burn 920ms ease-in-out infinite alternate; }

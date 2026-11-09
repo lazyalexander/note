@@ -122,7 +122,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=50">
+<link rel="stylesheet" href="assets/style.css?v=51">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -377,6 +377,15 @@ ${railHtml(post)}
   <div class="escorts">${fleetEscortsHtml()}</div>
   <svg class="ship-plate" viewBox="0 0 1536 1024" focusable="false">
     <defs>
+      <!-- Ship paint sampled from the flagship at matching luminance percentiles. -->
+      <filter id="flagship-palette" color-interpolation-filters="sRGB">
+        <feColorMatrix type="saturate" values="0"/>
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues=".031 .082 .361 .600 .733 .839 .937 .988 1"/>
+          <feFuncG type="table" tableValues="0 .004 .188 .431 .576 .702 .835 .925 .992"/>
+          <feFuncB type="table" tableValues=".125 .192 .463 .651 .753 .835 .882 .929 .988"/>
+        </feComponentTransfer>
+      </filter>
       <linearGradient id="exhaust"><stop stop-color="#9b51e8" stop-opacity="0"/><stop offset=".55" stop-color="#ba6aee" stop-opacity=".72"/><stop offset=".88" stop-color="#ffe0e8"/><stop offset="1" stop-color="white"/></linearGradient>
       <g id="plume"><path d="M0 -12 Q-52 -20 -168 -37 Q-75 -8 0 12Z" fill="url(#exhaust)"/><path d="M0 -6 L-99 -24 L0 5Z" fill="url(#exhaust)"/></g>
       <g id="archive-vessel">

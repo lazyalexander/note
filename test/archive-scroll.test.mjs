@@ -130,11 +130,11 @@ test("non-home pages install no scene handlers", () => {
   assert.equal(Object.keys(setup(false, false).events).length, 0);
 });
 
-test("the eight escorts each ship a distinct illustration", async () => {
+test("the five remaining escorts each ship a distinct illustration", async () => {
   const files = [...fleetEscortsHtml().matchAll(/<image href="(assets\/fleet\/[^"]+)"/g)].map((match) => match[1]);
-  assert.equal(files.length, 8);
+  assert.deepEqual(files.map((file) => file.split("/").pop()).sort(), ["carrier.webp", "clipper.webp", "courier.webp", "forge.webp", "salvage.webp"]);
   const plates = await Promise.all(files.map((file) => readFile(new URL("../" + file, import.meta.url))));
-  assert.equal(new Set(plates.map((buffer) => buffer.toString("base64"))).size, 8);
+  assert.equal(new Set(plates.map((buffer) => buffer.toString("base64"))).size, files.length);
 });
 
 test("the satellite advances through four distinct phases and repeats in four minutes", () => {

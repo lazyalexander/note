@@ -23,7 +23,7 @@ async function readJson(path, fallback) {
  * in `content/` and folders starting with "." or "_" are not published; folders
  * outside `content/` are never read.
  *
- * content/<NN-series>/series.json     optional { title, description }
+ * content/<NN-series>/series.json     optional { title, description, homeRole: "help" | "about" | "blog" }
  * content/<NN-series>/<NN-post>.md    post (first "# " line is the title)
  * content/<NN-series>/<NN-post>.json  optional { tags: [] }
  */
@@ -52,6 +52,7 @@ export async function loadContent(contentDir) {
       dir,
       title: String(smeta.title || prettyName(dir)),
       description: String(smeta.description || ""),
+      homeRole: smeta.homeRole === "help" || smeta.homeRole === "about" ? smeta.homeRole : "blog",
       posts,
     });
   }

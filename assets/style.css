@@ -1034,36 +1034,61 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   .library .folders { padding-inline: .5rem; }
 }
 
-/* Archive city: scroll from the skyline into a single, usable notebook window. */
+/* Archive journey: a wide city becomes the little house behind the work desk. */
 .library.archive-world { max-width: none; padding: 0 1.5rem 3rem; position: relative; isolation: isolate; }
 .archive-stage { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
 .archive-haze { position: absolute; inset: 0; background: radial-gradient(ellipse at 25% 15%, var(--bg-elev), transparent 65%); }
-.archive-city { position: absolute; width: max(1200px, 110vw); height: 110vh; object-fit: cover; object-position: center 65%; bottom: -6vh; left: -5vw; transform-origin: 70% 55%; will-change: transform; opacity: .88; }
-:root[data-theme="tokyo"] .archive-city { opacity: .4; filter: saturate(.8); }
-.archive-arrival { position: relative; min-height: calc(100svh - var(--sl-h)); max-width: 76rem; margin: 0 auto; padding: 9vh 1rem 7rem; }
+.archive-city { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .9; }
+.archive-camera { will-change: transform; }
+:root[data-theme="tokyo"] .archive-city { opacity: .38; filter: saturate(.8); }
+.archive-journey { height: 240svh; position: relative; }
+.archive-arrival { position: relative; height: calc(100svh - var(--sl-h)); max-width: 76rem; margin: 0 auto; padding: 9vh 1rem 7rem; }
 .archive-arrival .library-kicker { margin-bottom: 2.7rem; }
 .archive-arrival h1 { font-size: clamp(2.6rem, 5.5vw, 5.2rem); font-weight: 500; letter-spacing: .03em; margin: 0 0 1rem; line-height: 1.25; max-width: 10em; text-shadow: 0 2px 24px var(--bg); }
 .archive-arrival .hero-sub { color: var(--fg-dim); font-size: 1rem; }
-.archive-cue { position: absolute; left: 1rem; bottom: 3rem; display: flex; flex-direction: column; gap: .7rem; font-size: .8rem; letter-spacing: .09em; color: var(--fg); background: color-mix(in srgb, var(--bg-elev) 85%, transparent); border: 1px solid var(--border); padding: .7rem 1rem; }
+.archive-cue { position: absolute; left: 1rem; bottom: 3rem; display: flex; flex-direction: column; gap: .7rem; font-size: .8rem; letter-spacing: .09em; color: var(--fg); background: color-mix(in srgb, var(--bg-elev) 90%, transparent); border: 1px solid var(--border); padding: .7rem 1rem; }
 .archive-cue span { font-size: 1.3rem; }
-.notebook-window { max-width: 58rem; margin: 0 auto; scroll-margin-top: 2rem; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg-elev) 96%, transparent); box-shadow: 7px 7px 0 color-mix(in srgb, var(--eva-purple) 22%, transparent), 0 18px 80px var(--shadow); }
+.journey-caption { position: sticky; top: calc(100svh - var(--sl-h) - 3.5rem); display: flex; justify-content: center; gap: 1.4rem; margin: 0 auto; width: fit-content; max-width: 100%; padding: .6rem .9rem; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg-elev) 94%, transparent); font: .7rem/1.5 Consolas, Menlo, var(--read-sans); color: var(--comment); }
+.journey-caption .current { color: var(--eva-purple); text-decoration: underline; text-underline-offset: .35em; }
+.archive-desk { max-width: 76rem; margin: 0 auto; scroll-margin-top: 1.5rem; }
+.desk-navigation { display: flex; gap: 1.5rem; width: fit-content; padding: .65rem 1rem; margin: 0 0 1.25rem; background: var(--bg-elev); border: 1px solid var(--border); font-size: .8rem; }
+.desk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1.5rem; align-items: start; }
+.desk-sidebar { display: grid; gap: 1.5rem; }
+.notebook-window { min-width: 0; scroll-margin-top: 2rem; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg-elev) 97%, transparent); box-shadow: 5px 5px 0 color-mix(in srgb, var(--eva-purple) 22%, transparent), 0 18px 80px var(--shadow); }
 .notebook-window .library-heading { border: 0; border-bottom: 1px solid var(--border); padding: .75rem 1.25rem; }
 .notebook-content { padding: 1.5rem 1.5rem 1rem; }
 .library .notebook-window .home-search { margin: 0 0 1.8rem; }
 .library .notebook-window .folders { padding: 0; border: 0; border-top: 1px solid var(--border); box-shadow: none; background: transparent; }
 .notebook-directory { margin-bottom: .6rem; font: .75rem/1.5 Consolas, Menlo, var(--read-sans); color: var(--comment); }
-.archive-footer { position: relative; max-width: 58rem; margin: 2rem auto; color: var(--fg-dim); }
+.info-window .notebook-content { padding: 1rem 1.25rem; font-size: .85rem; }
+.info-window p { margin: 0 0 1.1rem; color: var(--fg-dim); }
+.info-window .info-caption { margin-bottom: .4rem; font-size: .7rem; color: var(--comment); }
+.info-links { list-style: none; margin: 0; padding: 0; }
+.info-links a { display: flex; justify-content: space-between; gap: .5rem; padding: .65rem 0; border-top: 1px solid var(--border); }
+.desk-shortcuts { display: grid; grid-template-columns: max-content 1fr; gap: .65rem 1rem; margin: 0 0 1.25rem; font-size: .8rem; }
+.desk-shortcuts dd { margin: 0; color: var(--fg-dim); }
+.desk-shortcuts kbd { font: .75rem Consolas, Menlo, monospace; }
+.archive-footer { position: relative; max-width: 76rem; margin: 2rem auto; color: var(--fg-dim); }
+@media (max-width: 900px) {
+  .desk-grid { grid-template-columns: minmax(0, 1fr); }
+  .desk-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 600px) {
   .library.archive-world { padding-inline: 1rem; }
-  .archive-arrival { padding: 3rem 0 7rem; min-height: calc(90svh - var(--sl-h)); }
+  .archive-journey { height: 210svh; }
+  .archive-arrival { padding: 3rem 0 7rem; }
   .archive-arrival h1 { font-size: 2.5rem; }
   .archive-arrival .library-kicker { gap: .5rem; }
-  .archive-city { left: -500px; width: 1250px; height: 90svh; object-fit: cover; object-position: 60% center; opacity: .65; }
   .archive-cue { left: 0; bottom: 2rem; }
+  .journey-caption { gap: .6rem; padding: .6rem; font-size: .6rem; }
+  .desk-navigation { gap: 1.2rem; }
+  .desk-sidebar { grid-template-columns: minmax(0, 1fr); }
   .notebook-content { padding: 1rem .85rem; }
   .notebook-window .library-heading { padding-inline: .85rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .archive-city { will-change: auto; transform: none !important; }
+  .archive-camera { will-change: auto; }
+  .archive-journey { height: 100svh; }
+  .journey-caption { display: none; }
 }

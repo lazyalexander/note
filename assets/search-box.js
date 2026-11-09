@@ -1,4 +1,4 @@
-import { buildSearchSuggestions, normalizeSearchInput, parseQuery, describeQueryError } from "./term-engine.js?v=46";
+import { buildSearchSuggestions, normalizeSearchInput, parseQuery, describeQueryError } from "./term-engine.js?v=47";
 
 const HISTORY_KEY = "note-search-history";
 const posts = window.__POSTS__ || [];

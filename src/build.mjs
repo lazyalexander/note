@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 import hljs from "highlight.js";
 import { loadContent } from "./content.mjs";
+import { partitionHomeSeries } from "./home-content.mjs";
 import { resolveTheme } from "./themes.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
 
@@ -112,8 +113,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=46">
-<link rel="stylesheet" href="assets/code.css?v=46">
+<link rel="stylesheet" href="assets/style.css?v=47">
+<link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
 ${termBarHtml()}
@@ -124,8 +125,8 @@ ${body}
 </div>`}
 ${statuslineHtml()}
 ${scriptTags}
-<script src="assets/archive-scroll.js?v=46" defer></script>
-<script type="module" src="assets/search-box.js?v=46"></script>
+<script src="assets/archive-scroll.js?v=47" type="module"></script>
+<script type="module" src="assets/search-box.js?v=47"></script>
 </body>
 </html>
 `;
@@ -176,6 +177,7 @@ async function main() {
   // the two long-tracked split sources are also mirrored into assets/
   for (const f of ["text-scrub.mjs", "tag-match.mjs"]) await cp(join(root, "src", f), join(root, "assets", f));
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
+  await cp(join(root, "src", "archive-camera.mjs"), join(distDir, "assets", "archive-camera.mjs"));
   await cp(join(root, "assets", "archive-scroll.js"), join(distDir, "assets", "archive-scroll.js"));
   await cp(join(root, "assets", "reader.js"), join(distDir, "assets", "reader.js"));
   await cp(join(root, "assets", "nav.js"), join(distDir, "assets", "nav.js"));
@@ -232,14 +234,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=46"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=46"></script>`;
+<script type="module" src="assets/terminal.js?v=47"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=47"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=46" defer></script>
+<script src="assets/reader.js?v=47" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=46"></script>
+<script type="module" src="assets/search.js?v=47"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -331,7 +333,9 @@ ${railHtml(post)}
     JSON.stringify({ base: BASE, posts: postsIndex }, null, 2) + "\n"
   );
 
-  const seriesHtml = `<ul class="folders">${seriesList
+  const homeGroups = partitionHomeSeries(seriesList);
+  const blogPosts = homeGroups.blog.flatMap((s) => s.posts);
+  const seriesHtml = `<ul class="folders">${homeGroups.blog
     .map((s) => {
       const desc = s.description ? `<span class="folder-desc">${escapeHtml(s.description)}</span>` : "";
       const articles = s.posts.map((p, i) => `<li><a class="home-post" data-nav href="posts/${p.outName}"><span class="home-post-number">${String(i + 1).padStart(2, "0")}</span><span class="home-post-title">${escapeHtml(p.title)}</span><span class="home-post-time">${p.minutes} 分钟</span></a></li>`).join("\n");
@@ -339,28 +343,49 @@ ${railHtml(post)}
     })
     .join("\n")}</ul>`;
 
+  function infoLinks(folders) {
+    return folders.flatMap((s) => s.posts).map((p) => `<li><a href="posts/${p.outName}">${escapeHtml(p.title)}<span aria-hidden="true">↗</span></a></li>`).join("\n");
+  }
   const indexBody = `<main class="home library archive-world" id="archive-world">
-<div class="archive-stage" aria-hidden="true"><div class="archive-haze"></div><img class="archive-city" src="assets/archive-city.svg" alt=""></div>
-<section class="archive-arrival" aria-labelledby="archive-title">
-  <p class="library-kicker">~/note <span>个人笔记 / PERSONAL ARCHIVE</span></p>
-  <h1 id="archive-title">留下一点想法。</h1>
-  <p class="hero-sub">写下、整理，再慢慢读。</p>
-  <a class="archive-cue" href="#notebook">向下滚动 · 进入笔记 <span aria-hidden="true">↓</span></a>
-</section>
-<section class="notebook-window" id="notebook" aria-labelledby="notebook-title">
-  <div class="library-heading"><h2 id="notebook-title">笔记</h2><span>${posts.length} 篇 · ${seriesList.length} 个文件夹</span></div>
-  <div class="notebook-content">
-    <form class="home-search" action="search.html" method="get" role="search">
-      <label for="home-query">搜索笔记</label>
-      ${searchFieldHtml("home-query", "home-search-feedback")}
-      <p class="search-hint">输入 find 关键词搜索，也可直接输入关键词；按 <kbd>/</kbd> 使用命令栏。</p>
-      <p id="home-search-feedback" class="search-feedback" role="status" hidden></p>
-    </form>
-    <div class="notebook-directory">目录</div>
-    ${seriesHtml}
-    <p class="library-help">展开文件夹，选择一篇开始阅读。<a href="posts/00-help/help.html">使用说明 ↗</a></p>
+<div class="archive-stage" aria-hidden="true"><div class="archive-haze"></div><svg class="archive-city" viewBox="0 0 2400 1400" preserveAspectRatio="xMidYMid slice"><g class="archive-camera"><image href="assets/archive-city.svg" width="2400" height="1400"/></g></svg></div>
+<section class="archive-journey" aria-labelledby="archive-title">
+  <div class="archive-arrival">
+    <p class="library-kicker">~/note <span>个人笔记 / PERSONAL ARCHIVE</span></p>
+    <h1 id="archive-title">留下一点想法。</h1>
+    <p class="hero-sub">从一座城，走进一间书房。</p>
+    <a class="archive-cue" href="#archive-desk">向下滚动 · 靠近档案室 <span aria-hidden="true">↓</span></a>
   </div>
+  <div class="journey-caption" aria-hidden="true"><span>01 / 城市远景</span><span>02 / 工业街区</span><span>03 / 归档小屋</span></div>
 </section>
+<div class="archive-desk" id="archive-desk">
+  <nav class="desk-navigation" aria-label="首页模块"><a href="#notebook">Blog 正文</a><a href="#site-about">关于本站</a><a href="#site-help">使用说明</a></nav>
+  <div class="desk-grid">
+    <section class="notebook-window blog-window" id="notebook" aria-labelledby="notebook-title">
+      <div class="library-heading"><h2 id="notebook-title">Blog / 正文</h2><span>${blogPosts.length} 篇 · ${homeGroups.blog.length} 个文件夹</span></div>
+      <div class="notebook-content">
+        <form class="home-search" action="search.html" method="get" role="search">
+          <label for="home-query">搜索笔记</label>
+          ${searchFieldHtml("home-query", "home-search-feedback")}
+          <p class="search-hint">find 关键词 · 搜索范围包含正文、使用说明和关于本站。</p>
+          <p id="home-search-feedback" class="search-feedback" role="status" hidden></p>
+        </form>
+        <div class="notebook-directory">文章目录</div>
+        ${seriesHtml}
+        <p class="library-help">展开文件夹，选择一篇开始阅读。</p>
+      </div>
+    </section>
+    <div class="desk-sidebar">
+      <section class="notebook-window info-window" id="site-about" aria-labelledby="about-title">
+        <div class="library-heading"><h2 id="about-title">关于本站</h2><span>ABOUT</span></div>
+        <div class="notebook-content"><p>一个存放文字、想法和阅读片段的私人档案室。</p><p class="info-caption">设计与来由</p><ul class="info-links">${infoLinks(homeGroups.about)}</ul></div>
+      </section>
+      <section class="notebook-window info-window" id="site-help" aria-labelledby="help-title">
+        <div class="library-heading"><h2 id="help-title">使用说明</h2><span>GUIDE</span></div>
+        <div class="notebook-content"><dl class="desk-shortcuts"><dt><kbd>/</kbd></dt><dd>打开命令栏</dd><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>选择搜索建议</dd><dt><kbd>Enter</kbd></dt><dd>搜索或打开选中项</dd><dt><kbd>Esc</kbd></dt><dd>收起建议与命令栏</dd></dl><ul class="info-links">${infoLinks(homeGroups.help)}</ul></div>
+      </section>
+    </div>
+  </div>
+</div>
 <p class="footer archive-footer">note // tui</p>
 </main>`;
 

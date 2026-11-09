@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 320" fill="none">
+<title>笔记观测台</title>
+<g stroke="#75b5d5" stroke-width="1"><path d="M25 278 275 148 535 268 285 318Z"/><path d="m85 247 260 120M145 215l260 120M205 184l260 120M85 306l250-130M145 334l250-130M205 362l250-130" opacity=".35"/></g>
+<path d="m350 268 56-30V112l-56 30Z" fill="#add8ed"/><path d="m350 268-38-22V120l38 22Z" fill="#4376c9"/><path d="m312 120 56-30 38 22-56 30Z" fill="#d1ebf5"/>
+<path d="m322 130 0 106m9-101v106m9-100v105" stroke="#8fc9e7" stroke-width="3"/>
+<ellipse cx="358" cy="104" rx="83" ry="27" transform="rotate(-22 358 104)" stroke="#538ac8" stroke-width="2"/>
+<path d="m306 122 104-36m-96 53 80-70m-37 72 6-73" stroke="#78b6d9"/>
+<circle cx="358" cy="48" r="30" fill="#3564b9"/><ellipse cx="358" cy="48" rx="49" ry="12" transform="rotate(-25 358 48)" stroke="#9fd5e9" stroke-width="3"/>
+<path d="m187 267 0-82 43-24 0 82Z" fill="#b5deef"/><path d="m187 185-32-18 43-24 32 18Z" fill="#e1f1f8"/><path d="m155 167 32 18v82l-32-18Z" fill="#4b79c5"/>
+<path d="m235 276 0-45 40-22v45Z" fill="#77b7d9"/><path d="m235 231-24-14 40-22 24 14Z" fill="#d7edf6"/><path d="m211 217 24 14v45l-24-14Z" fill="#3964af"/>
+<path d="m350 268 0 12-22-12v12l-22-12v12l-22-12v12l-22-12" stroke="#5287c6" stroke-width="3"/>
+<circle cx="462" cy="170" r="16" stroke="#82bbdb"/><path d="M462 154v32m-16-16h32m-28-11 24 22m-24 0 24-22" stroke="#82bbdb"/>
+<g fill="#83bedc"><circle cx="260" cy="60" r="2"/><circle cx="460" cy="72" r="2"/><circle cx="130" cy="111" r="2"/><circle cx="500" cy="237" r="2"/></g>
+<path d="m410 93 0 84-15 8" stroke="#aa6577"/><path d="m386 188 22-12" stroke="#aa6577" stroke-width="3"/>
+</svg>

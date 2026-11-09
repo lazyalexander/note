@@ -112,8 +112,8 @@
 只提供 `day` 和 `tokyo` 两个主题，选择会记在当前浏览器里。状态栏右侧的 ◐ 按钮或 `Space T` 在两者之间切换，不再按时间自动变化；首次使用默认 `tokyo`：
 
 ```
-/theme day     白天 · 暖纸色
-/theme tokyo   夜间 · 紫色终端
+/theme day     白天 · 冷纸蓝
+/theme tokyo   夜间 · 深海蓝
 ```
 
 旧浏览器保存的 `paper` 会迁移到 `day`；`ink`、`auto` 会迁移到 `tokyo`。旧名称不再是可执行的主题命令。

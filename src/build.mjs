@@ -112,8 +112,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=44">
-<link rel="stylesheet" href="assets/code.css?v=44">
+<link rel="stylesheet" href="assets/style.css?v=45">
+<link rel="stylesheet" href="assets/code.css?v=45">
 </head>
 <body>
 ${termBarHtml()}
@@ -124,7 +124,7 @@ ${body}
 </div>`}
 ${statuslineHtml()}
 ${scriptTags}
-<script type="module" src="assets/search-box.js?v=44"></script>
+<script type="module" src="assets/search-box.js?v=45"></script>
 </body>
 </html>
 `;
@@ -134,6 +134,7 @@ async function main() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
+  await cp(join(root, "assets", "observatory.svg"), join(distDir, "assets", "observatory.svg"));
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
@@ -229,14 +230,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=44"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=44"></script>`;
+<script type="module" src="assets/terminal.js?v=45"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=45"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=44" defer></script>
+<script src="assets/reader.js?v=45" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=44"></script>
+<script type="module" src="assets/search.js?v=45"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -338,7 +339,8 @@ ${railHtml(post)}
 
   const indexBody = `<main class="wrap home library">
 <section class="hero">
-  <p class="library-kicker">~/note <span>个人笔记</span></p>
+  <img class="library-scene" src="assets/observatory.svg" alt="" aria-hidden="true">
+  <p class="library-kicker">~/note <span>个人笔记 / PERSONAL ARCHIVE</span></p>
   <h1>留下一点想法。</h1>
   <p class="hero-sub">写下、整理，再慢慢读。</p>
 </section>

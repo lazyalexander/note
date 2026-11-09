@@ -1056,10 +1056,10 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   position: absolute; left: 80%; top: 17%; width: clamp(2.8rem, 5.5vw, 6.5rem); aspect-ratio: 1;
   transform: rotate(-29deg);
 }
-.ship-plate { position: absolute; left: 23%; top: 12%; width: 75%; height: 79%; overflow: visible; }
+.ship-plate { position: absolute; left: 25%; top: 17%; width: 65%; height: 68%; overflow: visible; }
 .chapel-callout { color: var(--fg-dim); opacity: clamp(0, 1 - var(--approach, 0) * 4, 1); }
 .chapel-callout text { font: 21px var(--read-serif); letter-spacing: .14em; }
-.archive-journey { height: 227svh; position: relative; }
+.archive-journey { height: 244svh; position: relative; }
 .archive-arrival { position: relative; height: calc(100svh - var(--sl-h)); max-width: 84rem; margin: 0 auto; padding-top: clamp(1rem, 3.5vh, 2.5rem); }
 .archive-masthead { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .65rem; }
 .site-signature { font: italic 1.5rem/1 var(--read-serif); color: var(--fg); }
@@ -1093,7 +1093,7 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   .desk-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
 }
 @media (max-aspect-ratio: 1/1) {
-  .ship-plate { left: 2%; top: 24%; width: 96%; height: 62%; }
+  .ship-plate { left: 9%; top: 32%; width: 84%; height: 37%; }
   .orbital-arc { top: 28%; left: -13%; width: 136%; height: 41%; }
 }
 @media (max-width: 600px) {
@@ -1121,18 +1121,37 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 }
 .star-field::after { background-size: 193px 157px; background-position: 70px 52px; animation-duration: 8.3s; animation-delay: -3s; }
 @keyframes starlight { from { opacity: .12; } to { opacity: .85; } }
-.escorts { opacity: clamp(0, .8 - var(--approach, 0) * 1.25, .8); }
-.escort.lead { transform: translate(816px, 15px) scale(.20); opacity: .72; }
-.escort.aft { transform: translate(-310px, 673px) scale(.26); }
+.escorts { position: absolute; inset: 0; opacity: clamp(0, 1 - var(--approach, 0) * 1.28, 1); }
+.escort {
+  position: absolute; left: var(--x); top: var(--y); width: var(--w); height: auto; overflow: visible;
+  opacity: calc(.48 + .05 * var(--depth));
+  transform: translate(calc(-50% - 1vw * var(--depth) * var(--approach, 0)), -50%);
+}
 .engine-flame { animation: engine-burn 920ms ease-in-out infinite alternate; }
 .engine-flame.second { animation-delay: -.55s; animation-duration: 1.15s; }
 .engine-flame.third { animation-delay: -.32s; animation-duration: .84s; }
 @keyframes engine-burn { from { transform: scale(.8, .88); opacity: .75; } to { transform: scale(1.16, 1.04); opacity: 1; } }
+.archive-portal { position: absolute; inset: 0; overflow: hidden; visibility: hidden; }
 .cabin-scene {
-  position: absolute; inset: 0; opacity: var(--entry, 0);
-  background: var(--sky) var(--cabin-art) 65% 45% / cover no-repeat;
+  position: absolute; inset: 0; background: var(--sky) var(--cabin-art) 65% 45% / cover no-repeat;
+  transform-origin: 62% 45%; transform: scale(calc(1 + .065 * var(--entry, 0)));
 }
-.in-cabin :is(.star-field, .ship-plate) { visibility: hidden; }
+.at-window .archive-portal {
+  visibility: visible;
+  clip-path: ellipse(var(--gate-rx) var(--gate-ry) at var(--gate-x) var(--gate-y));
+  opacity: clamp(0, var(--entry) * 11, 1);
+}
+.porthole-rim {
+  position: absolute; visibility: hidden; left: var(--gate-x); top: var(--gate-y);
+  width: calc(2 * var(--gate-rx)); height: calc(2 * var(--gate-ry)); transform: translate(-50%, -50%);
+  fill: none;
+}
+.at-window .porthole-rim { visibility: visible; opacity: clamp(0, min(var(--entry) * 9, (1 - var(--entry)) * 3), 1); }
+.rim-stone { stroke: #48344f; stroke-width: 4; }
+.rim-inlay { stroke: #e5d7e6; stroke-width: 1.8; }
+.rim-tracery { stroke: #9f85ad; stroke-width: 1.8; }
+.in-cabin .archive-portal { visibility: visible; }
+.in-cabin :is(.star-field, .escorts, .ship-plate) { visibility: hidden; }
 .in-cabin .engine-flame, .in-cabin .star-field::before, .in-cabin .star-field::after { animation-play-state: paused; }
 .archive-desk { min-height: calc(100svh - var(--sl-h)); padding-top: 1rem; }
 .fleet-return { display: inline-flex; align-items: center; gap: .6em; margin: 0 0 .8rem; padding: .4rem .75rem; min-height: 40px; font-size: .8rem; background: var(--bg-elev); border: 1px solid var(--border); }
@@ -1140,8 +1159,7 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 :root:lang(en) .archive-subtitle { display: none; }
 :root:is(:lang(en), :lang(el)) .archive-arrival h1 { max-width: 8em; font-size: clamp(2.5rem, 4.5vw, 5rem); }
 @media (max-aspect-ratio: 1/1) {
-  .escort.lead { transform: translate(1020px, -135px) scale(.22); }
-  .escort.aft { transform: translate(60px, 890px) scale(.28); }
+  .escort { left: var(--px); top: var(--py); width: var(--pw); }
 }
 @media (max-width: 600px) {
   .archive-masthead nav { gap: .55rem; text-align: end; }

@@ -7,6 +7,7 @@ import { loadContent } from "./content.mjs";
 import { partitionHomeSeries } from "./home-content.mjs";
 import { resolveTheme } from "./themes.mjs";
 import { formatMessage, languages } from "../assets/messages.mjs";
+import { fleetEscortsHtml } from "./fleet.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -121,7 +122,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=49">
+<link rel="stylesheet" href="assets/style.css?v=50">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -147,6 +148,7 @@ async function main() {
   for (const file of ["cathedral-ship.webp", "archive-day.webp", "archive-night.webp", "language.js", "messages.mjs"]) {
     await cp(join(root, "assets", file), join(distDir, "assets", file));
   }
+  await cp(join(root, "assets", "fleet"), join(distDir, "assets", "fleet"), { recursive: true });
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
@@ -372,6 +374,7 @@ ${railHtml(post)}
       <g fill="var(--orbit)" opacity=".28"><circle cx="67" cy="29" r="5"/><circle cx="65" cy="67" r="9"/><circle cx="38" cy="48" r="4"/></g>
     </svg>
   </div>
+  <div class="escorts">${fleetEscortsHtml()}</div>
   <svg class="ship-plate" viewBox="0 0 1536 1024" focusable="false">
     <defs>
       <linearGradient id="exhaust"><stop stop-color="#9b51e8" stop-opacity="0"/><stop offset=".55" stop-color="#ba6aee" stop-opacity=".72"/><stop offset=".88" stop-color="#ffe0e8"/><stop offset="1" stop-color="white"/></linearGradient>
@@ -385,7 +388,6 @@ ${railHtml(post)}
         <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
       </g>
     </defs>
-    <g class="escorts"><use class="escort lead" href="#archive-vessel"/><use class="escort aft" href="#archive-vessel"/></g>
     <g class="archive-camera">
       <use href="#archive-vessel"/>
       <g class="chapel-callout">
@@ -395,7 +397,12 @@ ${railHtml(post)}
       </g>
     </g>
   </svg>
-  <div class="cabin-scene"></div>
+  <div class="archive-portal"><div class="cabin-scene"></div></div>
+  <svg class="porthole-rim" viewBox="-100 -100 200 200" preserveAspectRatio="none" focusable="false">
+    <defs><path id="window-cusp" d="M-38 -92 Q-17 -91 0 -72 Q17 -91 38 -92"/></defs>
+    <circle r="98" class="rim-stone"/><circle r="95" class="rim-inlay"/>
+    <g class="rim-tracery">${Array.from({length: 8}, (_, i) => `<use href="#window-cusp" transform="rotate(${i * 45})"/>`).join("")}</g>
+  </svg>
 </div>
 <section class="archive-journey" id="fleet" aria-labelledby="archive-title">
   <div class="archive-arrival">
@@ -408,7 +415,7 @@ ${railHtml(post)}
     <a class="archive-cue" href="#archive-desk"><span class="descent-arrow" aria-hidden="true">↓</span>${ui("进入档案舱")}</a>
   </div>
 </section>
-<div class="archive-desk" id="archive-desk">
+<div class="archive-desk" id="archive-desk" tabindex="-1">
   <a class="fleet-return" href="#fleet">↑ ${ui("返回舰队")}</a>
   <div class="desk-grid">
     <section class="notebook-window blog-window" id="notebook" aria-labelledby="notebook-title">
@@ -442,7 +449,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=49"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=50"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

@@ -4,7 +4,7 @@ Minimal TUI static blog. One folder under `content/` = one series (a single post
 
 ## Browse & search
 
-The home page follows a cathedral ship in formation, past the twin towers and through the rose window into its archive cabin. Scroll to approach or follow the masthead links directly to the Blog, About, and Guide windows. Blog contains the search form and collapsible folder contents. Expand a folder to open any article directly; article rows include estimated reading time. Search accepts a plain expression, `/find <expr>`, or `find <expr>` and uses the same result page as the command bar.
+The home page follows a cathedral flagship and eight individually illustrated escorts. Scroll past the twin towers and through the rose window into the archive cabin, or use the boarding link for an interruptible automatic approach. Scroll to approach or follow the masthead links directly to the Blog, About, and Guide windows. Blog contains the search form and collapsible folder contents. Expand a folder to open any article directly; article rows include estimated reading time. Search accepts a plain expression, `/find <expr>`, or `find <expr>` and uses the same result page as the command bar.
 
 ## Keyboard & search
 

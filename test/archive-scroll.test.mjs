@@ -2,67 +2,139 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
-import { archiveCameraFrame, cabinEntry, moonLightPath } from "../src/archive-camera.mjs";
-const source = (await readFile(new URL("../assets/archive-scroll.js", import.meta.url), "utf8")).replace(/^import[^;]+;\s*/, "");
+import { archiveCameraFrame, moonLightPath, windowAperture } from "../src/archive-camera.mjs";
+import { fleetEscortsHtml } from "../src/fleet.mjs";
+
+const source = (await readFile(new URL("../assets/archive-scroll.js", import.meta.url), "utf8"))
+  .replace(/^import[^;]+;\s*/, "");
+const height = 800, deskTop = height * 2.44;
+const travel = deskTop - height * 1.08;
+const viewAt = (t) => archiveCameraFrame(travel * t, deskTop, height);
+
+test("the approach begins with the full ship, banks past the towers and meets the painted rose", () => {
+  const far = viewAt(0);
+  assert.equal(far.transform, "matrix(1 0 0 1 0 0)");
+  assert.equal(far.entry, 0);
+  const mid = viewAt(.365);
+  assert.equal(mid.progress, .5);
+  assert.ok(mid.roseX > 960 && mid.roseY > 650);
+  assert.equal(viewAt(.65).entry, 0);
+  const near = viewAt(.82);
+  assert.ok(near.entry > 0 && near.entry < 1);
+  assert.ok(Math.abs(near.roseX - 768) < 1e-8 && Math.abs(near.roseY - 512) < 1e-8);
+  assert.equal(viewAt(1).entry, 1);
+  assert.deepEqual(viewAt(4), viewAt(1));
+  assert.deepEqual(viewAt(-1), far);
+});
+
+test("the aperture starts on the actual glass and grows beyond all four viewport corners", () => {
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    const plate = { left: 37, top: 76, width: viewport.width * .77, height: viewport.height * .52 };
+    const unit = Math.min(plate.width / 1536, plate.height / 1024);
+    const initial = viewAt(.68), start = windowAperture(initial, plate, viewport);
+    assert.ok(Math.abs(start.x - (plate.left + (plate.width - 1536 * unit) / 2 + initial.roseX * unit)) < 1e-8);
+    assert.ok(Math.abs(start.y - (plate.top + (plate.height - 1024 * unit) / 2 + initial.roseY * unit)) < 1e-8);
+    assert.equal(start.rx, 20 * unit * initial.scale);
+    let last = start.rx;
+    for (let i = 69; i <= 100; i++) {
+      const gate = windowAperture(viewAt(i / 100), plate, viewport);
+      assert.ok(gate.rx >= last);
+      last = gate.rx;
+    }
+    const end = windowAperture(viewAt(1), plate, viewport);
+    for (const x of [0, viewport.width]) for (const y of [0, viewport.height]) {
+      assert.ok(((x - end.x) / end.rx) ** 2 + ((y - end.y) / end.ry) ** 2 < 1);
+    }
+  }
+});
+
 function setup(reduced = false, present = true) {
-  const camera = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } }, events = {}, queue = [];
-  const preference = { matches: reduced, addEventListener: (name, fn) => { events.preference = fn; } };
-  const window = { scrollY: 0, innerHeight: 800, addEventListener: (name, fn) => { events[name] = fn; } };
-  const desk = { getBoundingClientRect: () => ({ top: 1920 - window.scrollY }) };
-  const stage = { classList: { toggle() {} }, style: { setProperty(name, value) { this[name] = value; } } };
+  const events = {}, queue = [], classes = new Set(), historyEntries = [];
+  const camera = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+  const stage = {
+    style: { setProperty(name, value) { this[name] = value; } },
+    classList: { toggle(k, on) { if (on) classes.add(k); else classes.delete(k); } },
+    getBoundingClientRect: () => ({ width: 1280, height }),
+  };
+  const rect = { left: 320, top: 136, width: 832, height: 544 };
+  const preference = { matches: reduced, addEventListener: (_, fn) => { events.preference = fn; } };
+  const window = {
+    scrollY: 0, location: { pathname: "/note/", search: "?preview", hash: "" },
+    addEventListener: (k, fn) => { events[k] = fn; },
+    scrollTo({ top }) { this.scrollY = top; events.scroll(); },
+  };
+  const desk = { getBoundingClientRect: () => ({ top: deskTop - window.scrollY }), focus() { this.focused = true; } };
+  const link = { hash: "#archive-desk", addEventListener: (k, fn) => { events[k] = fn; } };
+  const elements = { ".archive-camera": camera, ".ship-plate": { getBoundingClientRect: () => rect }, ".archive-stage": stage, ".archive-cue": link };
+  const world = { querySelector: (s) => elements[s], querySelectorAll: () => [link] };
   vm.runInNewContext(source, {
-    archiveCameraFrame, cabinEntry, moonLightPath, clearInterval() {}, setInterval() { return 1; },
-    document: { addEventListener() {}, getElementById: (id) => id === "moon-light" ? { setAttribute() {} } : id === "archive-desk" ? desk : present ? { querySelector: (selector) => selector === ".archive-camera" ? camera : stage } : null },
-    window, matchMedia: () => preference,
+    archiveCameraFrame, moonLightPath, windowAperture, AbortController,
+    clearInterval() {}, setInterval() { return 1; }, performance: { now: () => 0 },
+    document: {
+      addEventListener() {}, documentElement: { scrollHeight: deskTop + height },
+      getElementById: (id) => ({ "archive-world": present ? world : null, "moon-light": camera, "archive-desk": desk })[id],
+    },
+    window, matchMedia: () => preference, getComputedStyle: () => ({ scrollMarginTop: "24px" }),
+    history: { pushState: (_, __, href) => historyEntries.push(href) },
     requestAnimationFrame: (fn) => { queue.push(fn); return queue.length; },
   });
-  return { camera, stage, window, events, preference, queue, flush() { queue.splice(0).forEach((fn) => fn()); } };
+  const flush = (now = 0) => queue.splice(0).forEach((fn) => fn(now));
+  const enter = () => events.click({ currentTarget: link, preventDefault() {} });
+  return { stage, window, events, preference, classes, camera, desk, queue, flush, enter, historyEntries };
 }
-test("camera frames the full ship, arcs toward the towers and centers the rose window at arrival", () => {
-  const far = archiveCameraFrame(0, 1920, 800);
-  assert.equal(far.transform, "matrix(1 0 0 1 0 0)");
-  const mid = archiveCameraFrame(448, 1920, 800);
-  assert.equal(mid.progress, .5);
-  const [midScale, , , , midTx, midTy] = mid.transform.slice(7, -1).split(" ").map(Number);
-  assert.ok((768 - midTx) / midScale < 600 && (512 - midTy) / midScale < 430);
-  const near = archiveCameraFrame(1280, 1920, 800);
-  const [a, , , , tx, ty] = near.transform.slice(7, -1).split(" ").map(Number);
-  assert.equal(a, 3.6);
-  assert.ok(Math.abs(800 * a + tx - 768) < 1e-8);
-  assert.ok(Math.abs(584 * a + ty - 512) < 1e-8);
-  assert.deepEqual(archiveCameraFrame(50000, 1920, 800), near);
-  assert.deepEqual(archiveCameraFrame(-50, 1920, 800), far);
-});
-test("scroll batches frame updates, never intercepts wheel and respects history restore", () => {
+
+test("manual scroll, reversing through the window and history restore share a single camera", () => {
   const ui = setup();
   assert.equal(ui.events.wheel, undefined);
-  ui.window.scrollY = 800; ui.events.scroll(); ui.events.scroll();
+  ui.window.scrollY = .85 * travel; ui.events.scroll(); ui.events.scroll();
   assert.equal(ui.queue.length, 1);
   ui.flush();
-  assert.equal(ui.camera.attrs.transform, archiveCameraFrame(800, 1920, 800).transform);
-  ui.window.scrollY = 0; ui.events.pageshow(); ui.flush();
-  assert.equal(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
+  assert.ok(ui.classes.has("at-window"));
+  const gate = ui.stage.style["--gate-rx"];
+  ui.window.scrollY = deskTop; ui.events.pageshow(); ui.flush();
+  assert.ok(ui.classes.has("in-cabin"));
+  ui.window.scrollY = .85 * travel; ui.events.scroll(); ui.flush();
+  assert.equal(ui.stage.style["--gate-rx"], gate);
+  assert.ok(!ui.classes.has("in-cabin"));
 });
-test("reduced motion stays static and responds to preference changes", () => {
-  const ui = setup(true); ui.flush();
+
+test("automatic boarding can be interrupted before it changes focus or history", () => {
+  const ui = setup();
+  ui.flush(); ui.enter(); ui.flush(600);
+  const before = ui.window.scrollY;
+  assert.ok(before > 0 && before < deskTop);
+  ui.events.wheel(); ui.flush(2600);
+  assert.equal(ui.window.scrollY, before);
+  assert.equal(ui.desk.focused, undefined);
+  assert.deepEqual(ui.historyEntries, []);
+});
+
+test("completed boarding preserves the preview URL and lands keyboard focus on the archive", () => {
+  const ui = setup();
+  ui.flush(); ui.enter(); ui.flush(2500); ui.flush(2501);
+  assert.ok(ui.classes.has("in-cabin"));
+  assert.equal(ui.desk.focused, true);
+  assert.deepEqual(ui.historyEntries, ["/note/?preview#archive-desk"]);
+});
+
+test("reduced motion offers direct access to the cabin without animating the window", () => {
+  const ui = setup(true); ui.flush(); ui.enter();
+  assert.equal(ui.queue.length, 0);
+  ui.window.scrollY = deskTop; ui.events.scroll(); ui.flush();
   assert.equal(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
-  ui.preference.matches = false; ui.window.scrollY = 800; ui.events.preference(); ui.flush();
+  assert.ok(ui.classes.has("in-cabin") && !ui.classes.has("at-window"));
+  ui.preference.matches = false; ui.events.preference(); ui.flush();
   assert.notEqual(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
-  ui.preference.matches = true; ui.events.preference(); ui.flush();
-  assert.equal(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
-  assert.equal(ui.stage.style["--approach"], 0);
 });
 test("non-home pages install no scene handlers", () => {
   assert.equal(Object.keys(setup(false, false).events).length, 0);
 });
 
-test("the cabin replaces the fleet only after the camera reaches the window", () => {
-  assert.equal(cabinEntry(0, 1816, 800, false), 0);
-  assert.equal(cabinEntry(792, 1816, 800, false), 0);
-  assert.ok(cabinEntry(1000, 1816, 800, false) > 0);
-  assert.equal(cabinEntry(1200, 1816, 800, false), 1);
-  assert.equal(cabinEntry(0, 800, 800, true), 0);
-  assert.equal(cabinEntry(500, 800, 800, true), 1);
+test("the eight escorts each ship a distinct illustration", async () => {
+  const files = [...fleetEscortsHtml().matchAll(/<image href="(assets\/fleet\/[^"]+)"/g)].map((match) => match[1]);
+  assert.equal(files.length, 8);
+  const plates = await Promise.all(files.map((file) => readFile(new URL("../" + file, import.meta.url))));
+  assert.equal(new Set(plates.map((buffer) => buffer.toString("base64"))).size, 8);
 });
 
 test("the satellite advances through four distinct phases and repeats in four minutes", () => {

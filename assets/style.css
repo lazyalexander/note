@@ -1036,7 +1036,7 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 
 /* The sky drifts independently; the camera moves in coordinates of the ship plate. */
 html:has(.archive-world) { scroll-behavior: auto; }
-.library.archive-world { max-width: none; padding: 0 1.5rem 3rem; position: relative; isolation: isolate; }
+.library.archive-world { max-width: none; padding: 0 1.5rem 3rem; position: relative; isolation: isolate; overflow-x: clip; }
 .archive-stage {
   --sky: #151222; --halo: #30233f; --star: #c6b1dd; --orbit: #5d4b70;
   position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
@@ -1090,7 +1090,7 @@ html:has(.archive-world) { scroll-behavior: auto; }
 }
 .desk-module.gathering > .notebook-window {
   transform-origin: top left; transform: var(--gather-transform);
-  opacity: var(--gather-light);
+  opacity: 1;
 }
 .desk-module.is-current .library-heading { background: color-mix(in srgb, var(--eva-purple) 16%, var(--window-title)); box-shadow: inset 3px 0 var(--eva-purple); }
 .desk-module:focus-visible { outline: 2px solid var(--eva-purple); outline-offset: 3px; }

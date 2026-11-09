@@ -53,14 +53,18 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
       const { top, bottom, left } = bounds[i];
       slot.classList.toggle("gathering", gathering);
       if (gathering) {
-        // Gather the real windows into a small desk, then expand it into its document layout.
-        const spread = 1 - entry;
-        const x = (viewport.width / 2 - left) * (1 - miniature) + (i === 0 ? -1 : 1) * viewport.width * .38 * spread;
-        const previewY = viewport.height * .2 + (top - first.top) * miniature + (i - 1) * viewport.height * .25 * spread;
-        const restY = top + window.scrollY - deskTop;
-        const y = previewY * (1 - settle) + restY * settle - top;
-        slot.style.setProperty("--gather-transform", `translate(${x * (1 - settle)}px, ${y}px) scale(${miniature + (1 - miniature) * settle})`);
-        slot.style.setProperty("--gather-light", entry);
+        // Keep each entire window beyond its own edge until its turn to enter.
+        const route = .7 * entry + .3 * settle;
+        const phase = Math.max(0, Math.min(1, (route - i * .23) / .47));
+        const slide = phase * phase * (3 - 2 * phase);
+        const scale = miniature + (1 - miniature) * settle;
+        const deskX = left + (viewport.width / 2 - left) * (1 - scale);
+        const previewY = viewport.height * .2 + (top - first.top) * miniature;
+        const deskY = previewY * (1 - settle) + (top + window.scrollY - deskTop) * settle;
+        const startX = i === 0 ? -bounds[i].width * scale - 16 : viewport.width + 16;
+        const x = i === 2 ? deskX : startX + (deskX - startX) * slide;
+        const y = i === 2 ? viewport.height + 16 + (deskY - viewport.height - 16) * slide : deskY;
+        slot.style.setProperty("--gather-transform", `translate(${x - left}px, ${y - top}px) scale(${scale})`);
       }
       const reveal = reduce.matches ? 1 : Math.max(0, Math.min(1, (viewport.height - top) / (viewport.height * .24)));
       slot.classList.toggle("arriving", reveal < 1);

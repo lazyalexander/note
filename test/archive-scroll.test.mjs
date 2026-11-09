@@ -74,7 +74,7 @@ function setup(reduced = false, present = true) {
   function target(id, y, size) {
     return {
       id, style: style(), classList: { toggle(name, on) { this[name] = on; } },
-      getBoundingClientRect: () => ({ left: 30, top: y - window.scrollY, bottom: y + size - window.scrollY }),
+      getBoundingClientRect: () => ({ left: 30, width: 400, top: y - window.scrollY, bottom: y + size - window.scrollY }),
       focus() { this.focused = true; },
     };
   }
@@ -181,13 +181,22 @@ test("each module follows the same approach and lands focus and both navigation 
 
 test("all three windows gather while the aperture is still opening, and unwind on reverse scroll", () => {
   const ui = setup();
-  ui.window.scrollY = travel * .84; ui.events.scroll(); ui.flush();
-  assert.ok(ui.classes.has("at-window"));
-  for (const slot of ui.modules) {
-    assert.equal(slot.classList.gathering, true);
-    assert.equal(slot.style["--gather-light"], ui.stage.style["--entry"]);
-    assert.ok(!slot.style["--gather-transform"].includes("NaN"));
+  function boxes(route) {
+    ui.window.scrollY = travel * route; ui.events.scroll(); ui.flush();
+    return ui.modules.map(slot => {
+      const [dx, dy, scale] = slot.style["--gather-transform"].match(/-?[\d.]+(?:e[+-]?\d+)?/g).map(Number);
+      const rect = slot.getBoundingClientRect();
+      return { x: rect.left + dx, right: rect.left + dx + rect.width * scale, y: rect.top + dy };
+    });
   }
+  const initial = boxes(.681);
+  assert.ok(initial[0].right < 0 && initial[1].x > 1280 && initial[2].y > height);
+  const mid = boxes(.84);
+  assert.ok(mid[0].right > 0 && mid[2].y > height);
+  assert.ok(ui.classes.has("at-window"));
+  const later = boxes(.97);
+  assert.ok(later[1].x < 1280 && later[2].y < height);
+  assert.deepEqual(boxes(.84), mid);
   ui.window.scrollY = 0; ui.events.scroll(); ui.flush();
   assert.ok(ui.modules.every(slot => !slot.classList.gathering));
 });

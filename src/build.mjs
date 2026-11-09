@@ -465,7 +465,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=57"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=58"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

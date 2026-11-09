@@ -200,12 +200,12 @@ test("all three windows gather while the aperture is still opening, and unwind o
     });
   }
   const initial = boxes(.681);
-  assert.ok(initial[0].right < 0 && initial[1].x > 1280 && initial[2].y > height);
+  assert.ok(initial.every(box => box.y > height));
   const mid = boxes(.84);
-  assert.ok(mid[0].right > 0 && mid[2].y > height);
+  assert.ok(mid[0].y < height && mid[2].y > height);
   assert.ok(ui.classes.has("at-window"));
   const later = boxes(.97);
-  assert.ok(later[1].x < 1280 && later[2].y < height);
+  assert.ok(later.every(box => box.y < height));
   assert.deepEqual(boxes(.84), mid);
   ui.window.scrollY = 0; ui.events.scroll(); ui.flush();
   assert.ok(ui.modules.every(slot => !slot.classList.gathering));

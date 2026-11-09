@@ -42,9 +42,10 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     });
     schedule();
   }
+  let sceneY = window.scrollY, lastPaint;
   function paintModules(entry) {
     const door = cabinThreshold(deskTop, viewport.height);
-    const settle = Math.max(0, Math.min(1, (window.scrollY - door) / (deskTop - door)));
+    const settle = Math.max(0, Math.min(1, (sceneY - door) / (deskTop - door)));
     const gathering = !reduce.matches && entry > 0 && settle < 1;
     toolbar.style.setProperty("--dock-light", gathering ? Math.max(0, (settle - .85) / .15) : 1);
     const bounds = moduleBounds;
@@ -67,9 +68,8 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
         const deskX = left + (viewport.width / 2 - left) * (1 - scale);
         const previewY = viewport.height * .2 + (bounds[i].top - first.top) * miniature;
         const deskY = previewY * (1 - settle) + (top + window.scrollY - deskTop) * settle;
-        const startX = i === 0 ? -bounds[i].width * scale - 16 : viewport.width + 16;
-        const x = i === 2 ? deskX : startX + (deskX - startX) * slide;
-        const y = i === 2 ? viewport.height + 16 + (deskY - viewport.height - 16) * slide : deskY;
+        const x = deskX;
+        const y = viewport.height + 16 + (deskY - viewport.height - 16) * slide;
         slot.style.setProperty("--gather-transform", `translate(${x - left}px, ${y - top}px) scale(${scale})`);
       }
       const reveal = reduce.matches ? 1 : Math.max(0, Math.min(1, (viewport.height - top) / (viewport.height * .24)));
@@ -92,9 +92,17 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
       else link.removeAttribute("aria-current");
     }
   }
-  function paint() {
+  function paint(now) {
     frame = 0;
-    const view = archiveCameraFrame(window.scrollY, deskTop, viewport.height, reduce.matches);
+    const goal = window.scrollY;
+    const dt = lastPaint == null ? 0 : now - lastPaint;
+    lastPaint = now;
+    // Smooth only the scene. Native scrolling, anchor landings and focus remain immediate.
+    if (reduce.matches || goal >= deskTop - 32 || goal === 0 || dt <= 0 || Math.abs(goal - sceneY) > viewport.height) sceneY = goal;
+    else sceneY += (goal - sceneY) * -Math.expm1(-Math.min(dt, 48) / 75);
+    if (Math.abs(goal - sceneY) < .4) sceneY = goal;
+    else schedule();
+    const view = archiveCameraFrame(sceneY, deskTop, viewport.height, reduce.matches);
     const crossing = view.entry > 0 && view.entry < 1;
     stage.classList.toggle("at-window", crossing);
     if (crossing) {

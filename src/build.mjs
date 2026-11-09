@@ -122,7 +122,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=52">
+<link rel="stylesheet" href="assets/style.css?v=54">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -360,6 +360,7 @@ ${railHtml(post)}
   function infoLinks(folders) {
     return folders.flatMap((s) => s.posts).map((p) => `<li><a href="posts/${p.outName}">${escapeHtml(p.title)}<span aria-hidden="true">↗</span></a></li>`).join("\n");
   }
+  const moduleNav = `<nav data-msg-aria-label="首页模块" aria-label="首页模块"><a href="#notebook">${ui("Blog 正文")}</a><a href="#site-about">${ui("关于本站")}</a><a href="#site-help">${ui("使用说明")}</a></nav>`;
   const indexBody = `<main class="home library archive-world" id="archive-world">
 <div class="archive-stage" aria-hidden="true">
   <div class="star-field">
@@ -419,11 +420,11 @@ ${railHtml(post)}
     <g class="rim-tracery">${Array.from({length: 8}, (_, i) => `<use href="#window-cusp" transform="rotate(${i * 45})"/>`).join("")}</g>
   </svg>
 </div>
-<section class="archive-journey" id="fleet" aria-labelledby="archive-title">
+<section class="archive-journey" id="fleet" tabindex="-1" aria-labelledby="archive-title">
   <div class="archive-arrival">
     <header class="archive-masthead">
       <span class="site-signature">~/note</span>
-      <nav data-msg-aria-label="首页模块" aria-label="首页模块"><a href="#notebook">${ui("Blog 正文")}</a><a href="#site-about">${ui("关于本站")}</a><a href="#site-help">${ui("使用说明")}</a></nav>
+      ${moduleNav}
     </header>
     <h1 id="archive-title">${ui("舰上手记")}</h1>
     <p class="archive-subtitle" lang="en">Shipboard notes</p>
@@ -431,9 +432,9 @@ ${railHtml(post)}
   </div>
 </section>
 <div class="archive-desk" id="archive-desk" tabindex="-1">
-  <a class="fleet-return" href="#fleet">↑ ${ui("返回舰队")}</a>
+  <div class="desk-toolbar"><a class="fleet-return" href="#fleet">↑ ${ui("返回舰队")}</a>${moduleNav}</div>
   <div class="desk-grid">
-    <section class="notebook-window blog-window" id="notebook" aria-labelledby="notebook-title">
+    <section class="desk-module" id="notebook" tabindex="-1" aria-labelledby="notebook-title"><div class="notebook-window blog-window">
       <div class="library-heading"><h2 id="notebook-title">${ui("Blog / 正文")}</h2><span>${ui("{0} 篇 · {1} 个文件夹", blogPosts.length, homeGroups.blog.length)}</span></div>
       <div class="notebook-content">
         <form class="home-search" action="search.html" method="get" role="search">
@@ -446,16 +447,16 @@ ${railHtml(post)}
         ${seriesHtml}
         <p class="library-help">${ui("展开文件夹，选择一篇开始阅读。")}</p>
       </div>
-    </section>
+    </div></section>
     <div class="desk-sidebar">
-      <section class="notebook-window info-window" id="site-about" aria-labelledby="about-title">
+      <section class="desk-module" id="site-about" tabindex="-1" aria-labelledby="about-title"><div class="notebook-window info-window">
         <div class="library-heading"><h2 id="about-title">${ui("关于本站")}</h2><span aria-hidden="true" lang="en">ABOUT</span></div>
         <div class="notebook-content"><p>${ui("一个存放文字、想法和阅读片段的私人档案室。")}</p><p class="info-caption">${ui("设计与来由")}</p><ul class="info-links">${infoLinks(homeGroups.about)}</ul></div>
-      </section>
-      <section class="notebook-window info-window" id="site-help" aria-labelledby="help-title">
+      </div></section>
+      <section class="desk-module" id="site-help" tabindex="-1" aria-labelledby="help-title"><div class="notebook-window info-window">
         <div class="library-heading"><h2 id="help-title">${ui("使用说明")}</h2><span aria-hidden="true" lang="en">GUIDE</span></div>
         <div class="notebook-content"><dl class="desk-shortcuts"><dt><kbd>/</kbd></dt><dd>${ui("打开命令栏")}</dd><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>${ui("选择搜索建议")}</dd><dt><kbd>Enter</kbd></dt><dd>${ui("搜索或打开选中项")}</dd><dt><kbd>Esc</kbd></dt><dd>${ui("收起建议与命令栏")}</dd></dl><ul class="info-links">${infoLinks(homeGroups.help)}</ul></div>
-      </section>
+      </div></section>
     </div>
   </div>
 </div>
@@ -464,7 +465,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=50"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=54"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

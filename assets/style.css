@@ -1072,6 +1072,22 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 .descent-arrow { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--border); border-radius: 50%; font: 1rem/1 var(--read-serif); }
 .archive-masthead a:hover, .archive-cue:hover { color: var(--eva-purple); }
 .archive-desk { max-width: 76rem; margin: 0 auto; scroll-margin-top: 1.5rem; }
+.desk-toolbar {
+  position: sticky; top: .5rem; z-index: 42; display: flex; align-items: center; flex-wrap: wrap;
+  width: fit-content; max-width: 100%; margin-bottom: 1rem; padding: 0 .3rem;
+  border: 1px solid var(--border); background: var(--bg-elev); box-shadow: 2px 2px 0 var(--border);
+}
+.desk-toolbar nav { display: flex; flex-wrap: wrap; }
+.desk-toolbar a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .65rem; color: var(--fg-dim); font: .8rem var(--read-sans); }
+.desk-toolbar .fleet-return { gap: .3rem; border-inline-end: 1px solid var(--border); }
+.desk-toolbar a[aria-current="location"] { box-shadow: inset 0 -2px var(--eva-purple); color: var(--fg); }
+.desk-toolbar a:hover { color: var(--eva-purple); }
+.desk-module { min-width: 0; scroll-margin-top: var(--dock-space, 4rem); }
+.desk-module.arriving:not(:focus-within) > .notebook-window {
+  opacity: calc(.25 + .75 * var(--arrive, 1)); transform: translateY(calc((1 - var(--arrive, 1)) * 16px));
+}
+.desk-module.is-current .library-heading { background: color-mix(in srgb, var(--eva-purple) 16%, var(--window-title)); box-shadow: inset 3px 0 var(--eva-purple); }
+.desk-module:focus-visible { outline: 2px solid var(--eva-purple); outline-offset: 3px; }
 .desk-grid { display: grid; grid-template-columns: min(51%, 37rem) min(30%, 19rem); justify-content: space-between; gap: 1.5rem; align-items: start; }
 .desk-sidebar { display: grid; gap: 1.5rem; margin-top: 3.5rem; }
 .notebook-window { min-width: 0; scroll-margin-top: 2rem; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg-elev) 97%, transparent); box-shadow: 5px 5px 0 color-mix(in srgb, var(--eva-purple) 22%, transparent), 0 18px 80px var(--shadow); }
@@ -1104,6 +1120,8 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   .archive-masthead { padding-bottom: .3rem; }
   .chapel-callout text { font-size: 42px; }
   .desk-sidebar { grid-template-columns: minmax(0, 1fr); }
+  /* Give the final stacked window room to scroll into the reading area. */
+  .desk-sidebar > .desk-module:last-child { min-block-size: 65svh; }
   .notebook-content { padding: 1rem .85rem; }
   .notebook-window .library-heading { padding-inline: .85rem; }
 }
@@ -1161,7 +1179,6 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 .in-cabin :is(.star-field, .escorts, .ship-plate) { visibility: hidden; }
 .in-cabin .engine-flame, .in-cabin .star-field::before, .in-cabin .star-field::after { animation-play-state: paused; }
 .archive-desk { min-height: calc(100svh - var(--sl-h)); padding-top: 1rem; }
-.fleet-return { display: inline-flex; align-items: center; gap: .6em; margin: 0 0 .8rem; padding: .4rem .75rem; min-height: 40px; font-size: .8rem; background: var(--bg-elev); border: 1px solid var(--border); }
 #ui-language { min-width: 0; max-width: 6.7rem; font: inherit; color: var(--fg); background: var(--bg-elev); border: 1px solid var(--border); }
 :root:lang(en) .archive-subtitle { display: none; }
 :root:is(:lang(en), :lang(el)) .archive-arrival h1 { max-width: 8em; font-size: clamp(2.5rem, 4.5vw, 5rem); }
@@ -1170,6 +1187,7 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
 }
 @media (max-width: 600px) {
   .archive-masthead nav { gap: .55rem; text-align: end; }
+  .desk-toolbar a { padding-inline: .45rem; font-size: .75rem; }
   #ui-language { max-width: 4.7rem; }
   .archive-masthead a { font-size: .75rem; }
 }

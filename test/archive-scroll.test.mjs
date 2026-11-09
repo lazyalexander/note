@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { readFile } from "node:fs/promises";
-import { archiveCameraFrame, moonLightPath, windowAperture } from "../src/archive-camera.mjs";
+import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } from "../src/archive-camera.mjs";
 import { fleetEscortsHtml } from "../src/fleet.mjs";
 
 const source = (await readFile(new URL("../assets/archive-scroll.js", import.meta.url), "utf8"))
@@ -58,29 +58,65 @@ function setup(reduced = false, present = true) {
   };
   const rect = { left: 320, top: 136, width: 832, height: 544 };
   const preference = { matches: reduced, addEventListener: (_, fn) => { events.preference = fn; } };
+  const listeners = new Map();
   const window = {
     scrollY: 0, location: { pathname: "/note/", search: "?preview", hash: "" },
-    addEventListener: (k, fn) => { events[k] = fn; },
+    addEventListener(name, fn, options) {
+      if (!listeners.has(name)) listeners.set(name, new Set());
+      const group = listeners.get(name);
+      group.add(fn);
+      events[name] = (event = {}) => { for (const handler of group) handler(event); };
+      options?.signal?.addEventListener("abort", () => group.delete(fn));
+    },
     scrollTo({ top }) { this.scrollY = top; events.scroll(); },
   };
-  const desk = { getBoundingClientRect: () => ({ top: deskTop - window.scrollY }), focus() { this.focused = true; } };
-  const link = { hash: "#archive-desk", addEventListener: (k, fn) => { events[k] = fn; } };
-  const elements = { ".archive-camera": camera, ".ship-plate": { getBoundingClientRect: () => rect }, ".archive-stage": stage, ".archive-cue": link };
-  const world = { querySelector: (s) => elements[s], querySelectorAll: () => [link] };
+  const style = () => ({ setProperty(name, value) { this[name] = value; } });
+  function target(id, y, size) {
+    return {
+      id, style: style(), classList: { toggle(name, on) { this[name] = on; } },
+      getBoundingClientRect: () => ({ top: y - window.scrollY, bottom: y + size - window.scrollY }),
+      focus() { this.focused = true; },
+    };
+  }
+  const modules = [
+    target("notebook", deskTop + 80, 420), target("site-about", deskTop + 530, 150), target("site-help", deskTop + 710, 900),
+  ];
+  const desk = target("archive-desk", deskTop, 1660);
+  const fleet = target("fleet", 0, deskTop);
+  const toolbar = { getBoundingClientRect: () => ({ height: 44 }) };
+  desk.querySelector = () => toolbar;
+  desk.querySelectorAll = () => modules;
+  desk.addEventListener = () => {};
+  function linkTo(id) {
+    return {
+      hash: "#" + id, addEventListener(_, fn) { this.click = fn; },
+      setAttribute(name, value) { this[name] = value; }, removeAttribute(name) { delete this[name]; },
+    };
+  }
+  const links = [desk, fleet, ...modules, ...modules].map(el => linkTo(el.id));
+  const elements = { ".archive-camera": camera, ".ship-plate": { getBoundingClientRect: () => rect }, ".archive-stage": stage };
+  const world = { querySelector: (s) => elements[s], querySelectorAll: () => links };
+  const ids = Object.fromEntries([fleet, desk, ...modules].map(el => [el.id, el]));
   vm.runInNewContext(source, {
-    archiveCameraFrame, moonLightPath, windowAperture, AbortController,
-    clearInterval() {}, setInterval() { return 1; }, performance: { now: () => 0 },
+    archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture, AbortController,
+    clearInterval() {}, setInterval() { return 1; }, performance: { now: () => 0, getEntriesByType: () => [] },
     document: {
-      addEventListener() {}, documentElement: { scrollHeight: deskTop + height },
-      getElementById: (id) => ({ "archive-world": present ? world : null, "moon-light": camera, "archive-desk": desk })[id],
+      addEventListener() {}, documentElement: { scrollHeight: deskTop + 1660 },
+      getElementById: (id) => ({ ...ids, "archive-world": present ? world : null, "moon-light": camera })[id],
     },
     window, matchMedia: () => preference, getComputedStyle: () => ({ scrollMarginTop: "24px" }),
-    history: { pushState: (_, __, href) => historyEntries.push(href) },
+    history: {
+      replaceState(state) { this.state = state; },
+      pushState(_, __, href) { historyEntries.push(href); window.location.hash = new URL(href, "https://notes.test").hash; },
+    },
     requestAnimationFrame: (fn) => { queue.push(fn); return queue.length; },
   });
   const flush = (now = 0) => queue.splice(0).forEach((fn) => fn(now));
-  const enter = () => events.click({ currentTarget: link, preventDefault() {} });
-  return { stage, window, events, preference, classes, camera, desk, queue, flush, enter, historyEntries };
+  const enter = (id = "archive-desk") => {
+    const link = links.find(link => link.hash === "#" + id);
+    link.click({ currentTarget: link, preventDefault() {} });
+  };
+  return { stage, window, events, preference, classes, camera, desk, modules, links, queue, flush, enter, historyEntries };
 }
 
 test("manual scroll, reversing through the window and history restore share a single camera", () => {
@@ -119,13 +155,54 @@ test("completed boarding preserves the preview URL and lands keyboard focus on t
 
 test("reduced motion offers direct access to the cabin without animating the window", () => {
   const ui = setup(true); ui.flush(); ui.enter();
-  assert.equal(ui.queue.length, 0);
+  assert.equal(ui.desk.focused, true);
+  assert.equal(ui.events.wheel, undefined);
   ui.window.scrollY = deskTop; ui.events.scroll(); ui.flush();
   assert.equal(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
   assert.ok(ui.classes.has("in-cabin") && !ui.classes.has("at-window"));
   ui.preference.matches = false; ui.events.preference(); ui.flush();
   assert.notEqual(ui.camera.attrs.transform, "matrix(1 0 0 1 0 0)");
 });
+test("each module follows the same approach and lands focus and both navigation markers on its own window", () => {
+  const windowPositions = [];
+  for (const id of ["notebook", "site-about", "site-help"]) {
+    const ui = setup(); ui.flush(); ui.enter(id); ui.flush(850);
+    windowPositions.push(ui.window.scrollY);
+    assert.deepEqual(ui.historyEntries, []);
+    ui.flush(2600); ui.flush(2601);
+    assert.equal(ui.modules.find(slot => slot.id === id).focused, true);
+    assert.ok(ui.classes.has("in-cabin"));
+    assert.equal(ui.window.location.hash, "#" + id);
+    const marked = ui.links.filter(link => link["aria-current"] === "location");
+    assert.deepEqual(marked.map(link => link.hash), ["#" + id, "#" + id]);
+  }
+  assert.equal(new Set(windowPositions).size, 1);
+});
+
+test("scrolling reveals the windows without taking focus or adding history, including on reversal", () => {
+  const ui = setup(); ui.flush();
+  const [blog, about] = ui.modules;
+  ui.window.scrollY = deskTop - height + 180; ui.events.scroll(); ui.flush();
+  assert.ok(blog.classList.arriving && about.classList.arriving);
+  assert.ok(Number(blog.style["--arrive"]) > 0 && Number(about.style["--arrive"]) === 0);
+  ui.window.scrollY = deskTop + 460; ui.events.scroll(); ui.flush();
+  assert.equal(about.classList.arriving, false);
+  assert.ok(about.classList["is-current"]);
+  assert.equal(about.focused, undefined);
+  ui.window.scrollY = 0; ui.events.scroll(); ui.flush();
+  assert.ok(blog.classList.arriving && !about.classList["is-current"]);
+  assert.deepEqual(ui.historyEntries, []);
+});
+
+test("history and reduced motion reach the requested module without playing the flight", () => {
+  const ui = setup(true); ui.flush(); ui.enter("site-help"); ui.flush();
+  assert.ok(ui.modules[2].focused);
+  ui.window.location.hash = "#site-about"; ui.events.popstate(); ui.flush(); ui.flush();
+  assert.ok(ui.modules[1].focused && ui.modules[1].classList["is-current"]);
+  assert.equal(ui.modules[1].classList.arriving, false);
+  assert.deepEqual(ui.historyEntries, ["/note/?preview#site-help"]);
+});
+
 test("non-home pages install no scene handlers", () => {
   assert.equal(Object.keys(setup(false, false).events).length, 0);
 });

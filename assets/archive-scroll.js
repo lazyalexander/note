@@ -1,4 +1,4 @@
-import { archiveCameraFrame, moonLightPath, windowAperture } from "./archive-camera.mjs?v=50";
+import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } from "./archive-camera.mjs?v=54";
 
 (function () {
   const world = document.getElementById("archive-world");
@@ -7,12 +7,20 @@ import { archiveCameraFrame, moonLightPath, windowAperture } from "./archive-cam
   const plate = world.querySelector(".ship-plate");
   const desk = document.getElementById("archive-desk");
   const stage = world.querySelector(".archive-stage");
+  const toolbar = desk.querySelector(".desk-toolbar");
+  const modules = Array.from(desk.querySelectorAll(".desk-module"));
+  const links = Array.from(world.querySelectorAll('a[href^="#"]'));
+  const moduleLinks = links.filter(link => modules.some(slot => link.hash === "#" + slot.id));
   const moon = document.getElementById("moon-light");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   let frame = 0, deskTop = 1, plateRect, viewport;
   let moonTimer = 0;
   let inside = false;
   let boarding;
+  let preferred = document.getElementById(window.location.hash.slice(1));
+  let preferredAt = window.scrollY;
+  let current;
+  let dockSpace = 0;
 
   function refreshMoon() {
     clearInterval(moonTimer);
@@ -25,7 +33,34 @@ import { archiveCameraFrame, moonLightPath, windowAperture } from "./archive-cam
     deskTop = desk.getBoundingClientRect().top + window.scrollY;
     plateRect = plate.getBoundingClientRect();
     viewport = stage.getBoundingClientRect();
+    dockSpace = Math.ceil(toolbar.getBoundingClientRect().height) + 16;
+    desk.style.setProperty("--dock-space", dockSpace + "px");
     schedule();
+  }
+  function paintModules() {
+    if (preferred && Math.abs(window.scrollY - preferredAt) > viewport.height * .25) preferred = null;
+    let firstVisible, atReadingLine, preferredVisible, lastVisible;
+    for (const slot of modules) {
+      const { top, bottom } = slot.getBoundingClientRect();
+      const reveal = reduce.matches ? 1 : Math.max(0, Math.min(1, (viewport.height - top) / (viewport.height * .24)));
+      slot.classList.toggle("arriving", reveal < 1);
+      if (reveal < 1) slot.style.setProperty("--arrive", reveal.toFixed(3));
+      if (!inside || bottom <= dockSpace || top >= viewport.height - 40) continue;
+      firstVisible ??= slot;
+      lastVisible = slot;
+      if (top <= dockSpace + viewport.height * .18 && (!atReadingLine || top > atReadingLine.top)) atReadingLine = { slot, top };
+      if (slot === preferred) preferredVisible = slot;
+    }
+    const atEnd = Math.ceil(window.scrollY + viewport.height) >= document.documentElement.scrollHeight - 1;
+    const overview = window.scrollY <= deskTop;
+    const active = preferredVisible || (overview && firstVisible) || (atEnd && lastVisible) || atReadingLine?.slot || firstVisible;
+    if (current === active) return;
+    current = active;
+    for (const slot of modules) slot.classList.toggle("is-current", slot === active);
+    for (const link of moduleLinks) {
+      if (active && link.hash === "#" + active.id) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    }
   }
   function paint() {
     frame = 0;
@@ -46,49 +81,111 @@ import { archiveCameraFrame, moonLightPath, windowAperture } from "./archive-cam
     camera.setAttribute("transform", view.transform);
     stage.style.setProperty("--entry", view.entry);
     stage.style.setProperty("--approach", view.progress);
+    paintModules();
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(paint); }
 
   // Keep same-document links on this page even when <base> and a preview query are present.
-  for (const link of world.querySelectorAll('a[href^="#"]')) {
+  for (const link of links) {
     link.href = window.location.pathname + window.location.search + link.hash;
+    const target = document.getElementById(link.hash.slice(1));
+    if (target) link.addEventListener("click", event => navigate(event, target));
   }
 
-  function cancelBoarding() { boarding?.abort(); }
-  world.querySelector(".archive-cue").addEventListener("click", (event) => {
-    if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || reduce.matches) return;
+  function destination(target) {
+    const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+    const rect = target.getBoundingClientRect();
+    let top = window.scrollY + rect.top - margin;
+    if (modules.includes(target)) {
+      // Preserve the desktop overview. On a stacked desk, bring the selected window up.
+      const overview = deskTop - (parseFloat(getComputedStyle(desk).scrollMarginTop) || 0);
+      const overviewBottom = overview + viewport.height - 48;
+      const fits = slot => window.scrollY + slot.getBoundingClientRect().bottom <= overviewBottom;
+      if ((target === modules[0] || modules.every(fits)) && window.scrollY + rect.top >= overview + dockSpace && fits(target)) top = overview;
+    }
+    return Math.max(0, Math.min(top, document.documentElement.scrollHeight - viewport.height));
+  }
+  function cancelBoarding() { boarding?.abort(); boarding = undefined; }
+  function navigate(event, target) {
+    if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const link = event.currentTarget;
     event.preventDefault();
     cancelBoarding();
+    const from = window.scrollY, to = destination(target);
+    const origin = { id: current?.id || (inside ? desk.id : "fleet") };
+    if (window.location.hash !== "#" + origin.id) origin.top = from;
+    function arrive() {
+      window.scrollTo({ top: destination(target), behavior: "instant" });
+      if (window.location.hash !== link.hash) {
+        history.replaceState({ ...history.state, archiveOrigin: origin }, "");
+        history.pushState(null, "", link.href);
+      }
+      preferred = target;
+      preferredAt = window.scrollY;
+      target.focus({ preventScroll: true });
+      schedule();
+    }
+    if (reduce.matches || Math.abs(from - to) < 2) { arrive(); return; }
     const controller = new AbortController();
     boarding = controller;
     // Direct manipulation always wins. Ordinary scrolling never starts a timed animation.
-    for (const name of ["wheel", "touchstart", "pointerdown", "keydown", "popstate", "pagehide", "resize"]) {
+    for (const name of ["wheel", "touchstart", "pointerdown", "keydown", "pagehide", "resize"]) {
       window.addEventListener(name, cancelBoarding, { passive: true, signal: controller.signal });
     }
-    const from = window.scrollY;
-    const margin = parseFloat(getComputedStyle(desk).scrollMarginTop) || 0;
-    const to = Math.min(deskTop - margin, document.documentElement.scrollHeight - viewport.height);
-    const duration = Math.min(2300, Math.max(420, Math.abs(to - from) / viewport.height * 960));
+    // Every module gets the same flight to the glass. Only the indoor leg varies.
+    const door = cabinThreshold(deskTop, viewport.height);
+    const crossesDoor = Math.min(from, to) < door && door < Math.max(from, to);
+    const legTime = distance => Math.min(1350, Math.max(240, distance / viewport.height * 960));
+    const firstTime = legTime(Math.abs((crossesDoor ? door : to) - from));
+    const secondTime = crossesDoor ? Math.min(1000, legTime(Math.abs(to - door))) : 0;
     const started = performance.now();
     function advance(now) {
       if (controller.signal.aborted) return;
-      const t = Math.max(0, Math.min(1, (now - started) / duration));
-      window.scrollTo({ top: from + (to - from) * t * t * (3 - 2 * t), behavior: "instant" });
-      if (t < 1) { requestAnimationFrame(advance); return; }
-      cancelBoarding();
-      if (window.location.hash !== link.hash) history.pushState(null, "", link.href);
-      desk.focus({ preventScroll: true });
+      const elapsed = Math.max(0, now - started);
+      if (elapsed >= firstTime + secondTime) { cancelBoarding(); arrive(); return; }
+      const secondLeg = crossesDoor && elapsed >= firstTime;
+      const start = secondLeg ? door : from, end = crossesDoor && !secondLeg ? door : to;
+      const t = secondLeg ? (elapsed - firstTime) / secondTime : elapsed / firstTime;
+      window.scrollTo({ top: start + (end - start) * t * t * (3 - 2 * t), behavior: "instant" });
+      requestAnimationFrame(advance);
     }
     requestAnimationFrame(advance);
+  }
+  desk.addEventListener("focusin", event => {
+    const slot = event.target.closest(".desk-module");
+    if (slot) { preferred = slot; preferredAt = window.scrollY; schedule(); }
+  });
+  function restoreLocation(origin) {
+    const target = document.getElementById(origin?.id || window.location.hash.slice(1) || "fleet");
+    if (target && (modules.includes(target) || target === desk || target.id === "fleet")) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: origin?.top ?? destination(target), behavior: "instant" });
+        preferred = target;
+        preferredAt = window.scrollY;
+        target.focus({ preventScroll: true });
+        schedule();
+      });
+    }
+  }
+  window.addEventListener("popstate", event => {
+    cancelBoarding();
+    restoreLocation(event.state?.archiveOrigin);
   });
   window.addEventListener("scroll", schedule, { passive: true });
   window.addEventListener("resize", measure);
   reduce.addEventListener("change", () => { cancelBoarding(); refreshMoon(); schedule(); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) cancelBoarding(); refreshMoon(); });
   window.addEventListener("pagehide", () => clearInterval(moonTimer));
-  window.addEventListener("pageshow", () => { refreshMoon(); measure(); });
+  window.addEventListener("pageshow", event => {
+    refreshMoon(); measure();
+    if (!event.persisted && window.location.hash && performance.getEntriesByType("navigation")[0]?.type === "navigate") restoreLocation();
+  });
   if (document.fonts) document.fonts.ready.then(measure);
+  if (typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(measure);
+    observer.observe(toolbar);
+    observer.observe(desk);
+  }
   refreshMoon();
   measure();
 })();

@@ -2,9 +2,11 @@ const clamp = (n) => Math.max(0, Math.min(1, n));
 const smooth = (n) => n * n * (3 - 2 * n);
 const rose = { x: 800, y: 584 };
 
+export const cabinThreshold = (deskTop, height) => Math.max(1, deskTop - height * 1.08);
+
 /** The whole route follows native document scroll, including on the way back. */
 export function archiveCameraFrame(scrollY, deskTop, height, reducedMotion = false) {
-  const travel = Math.max(1, deskTop - height * 1.08);
+  const travel = cabinThreshold(deskTop, height);
   const route = clamp(scrollY / travel);
   const progress = reducedMotion ? 0 : smooth(clamp(route / .73));
   const entry = reducedMotion ? Number(deskTop - scrollY < height * .8) : smooth(clamp((route - .68) / .32));

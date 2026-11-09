@@ -92,10 +92,10 @@ function termBarHtml() {
 </div></header>`;
 }
 
-function statuslineHtml() {
+function statuslineHtml(homeLink) {
   return `<footer class="statusline" id="statusline">
   <span class="sl-mode" id="sl-mode" data-mode="NORMAL" data-msg="NORMAL">常规</span>
-  <a class="sl-brand" href="${href("")}" data-msg-title="首页 (Space h)" title="首页 (Space h)">n note</a>
+  <a class="sl-brand" href="${homeLink}" data-msg-title="首页 (Space h)" title="首页 (Space h)">n note</a>
   <span class="sl-pending" id="sl-pending"></span>
   <span class="sl-msg" id="sl-msg" role="status" aria-live="polite"></span>
   <span class="sl-spacer"></span>
@@ -106,7 +106,7 @@ function statuslineHtml() {
 </footer>`;
 }
 
-function layout({ title, body, back, scripts, wide }) {
+function layout({ title, body, back, scripts, wide, homeLink = href("") }) {
   const backLink = back
     ? `<a class="back" href="${href("")}">← ${ui("返回")}</a>`
     : "";
@@ -122,7 +122,7 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=54">
+<link rel="stylesheet" href="assets/style.css?v=55">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -132,7 +132,7 @@ ${backLink}
 ${body}
 <p class="footer">note // tui</p>
 </div>`}
-${statuslineHtml()}
+${statuslineHtml(homeLink)}
 <script type="module" src="assets/language.js?v=49"></script>
 ${scriptTags}
 <script type="module" src="assets/search-box.js?v=49"></script>
@@ -312,7 +312,7 @@ ${navScript}`;
     const body = `<div class="reading-progress"><div></div></div>
 <div class="reader-grid">
   <aside class="chapter-rail">
-    <a class="back-to-book" href="${href("")}">${ui("← 目录")}</a>
+    <a class="back-to-book" href="${href("#notebook")}">${ui("← 目录")}</a>
     <div class="rail-series">${escapeHtml(post.series.title)}</div>
     ${post.series.description ? `<p class="rail-desc">${escapeHtml(post.series.description)}</p>` : ""}
     <nav class="chapter-navigation" data-msg-aria-label="本文件夹下的文章" aria-label="本文件夹下的文章">
@@ -320,7 +320,7 @@ ${railHtml(post)}
     </nav>
   </aside>
   <main class="reading-main">
-    <div class="reader-topline"><a href="${href("")}">${ui("首页")}</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">${ui("约 {0} 分钟阅读", post.minutes)}</span></div>
+    <div class="reader-topline"><a href="${href("#archive-desk")}">${ui("首页")}</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">${ui("约 {0} 分钟阅读", post.minutes)}</span></div>
     <header class="chapter-heading">
       <p class="eyebrow"><span class="chapter-badge">${n}</span>${escapeHtml(post.stem)}.md</p>
       <h1>${escapeHtml(post.title)}</h1>
@@ -336,7 +336,7 @@ ${railHtml(post)}
     <a class="back-to-top" href="#top">${ui("↑ 回到顶部")}</a>
   </aside>
 </div>`;
-    const page = layout({ title: post.title, body, back: false, scripts, wide: true });
+    const page = layout({ title: post.title, body, homeLink: href("#archive-desk"), back: false, scripts, wide: true });
     const outPath = join(distDir, "posts", post.outName);
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(outPath, page);
@@ -465,7 +465,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=54"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=55"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

@@ -74,7 +74,7 @@ function setup(reduced = false, present = true) {
   function target(id, y, size) {
     return {
       id, style: style(), classList: { toggle(name, on) { this[name] = on; } },
-      getBoundingClientRect: () => ({ top: y - window.scrollY, bottom: y + size - window.scrollY }),
+      getBoundingClientRect: () => ({ left: 30, top: y - window.scrollY, bottom: y + size - window.scrollY }),
       focus() { this.focused = true; },
     };
   }
@@ -83,7 +83,7 @@ function setup(reduced = false, present = true) {
   ];
   const desk = target("archive-desk", deskTop, 1660);
   const fleet = target("fleet", 0, deskTop);
-  const toolbar = { getBoundingClientRect: () => ({ height: 44 }) };
+  const toolbar = { style: style(), getBoundingClientRect: () => ({ height: 44 }) };
   desk.querySelector = () => toolbar;
   desk.querySelectorAll = () => modules;
   desk.addEventListener = () => {};
@@ -177,6 +177,19 @@ test("each module follows the same approach and lands focus and both navigation 
     assert.deepEqual(marked.map(link => link.hash), ["#" + id, "#" + id]);
   }
   assert.equal(new Set(windowPositions).size, 1);
+});
+
+test("all three windows gather while the aperture is still opening, and unwind on reverse scroll", () => {
+  const ui = setup();
+  ui.window.scrollY = travel * .84; ui.events.scroll(); ui.flush();
+  assert.ok(ui.classes.has("at-window"));
+  for (const slot of ui.modules) {
+    assert.equal(slot.classList.gathering, true);
+    assert.equal(slot.style["--gather-light"], ui.stage.style["--entry"]);
+    assert.ok(!slot.style["--gather-transform"].includes("NaN"));
+  }
+  ui.window.scrollY = 0; ui.events.scroll(); ui.flush();
+  assert.ok(ui.modules.every(slot => !slot.classList.gathering));
 });
 
 test("scrolling reveals the windows without taking focus or adding history, including on reversal", () => {

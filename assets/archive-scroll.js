@@ -37,11 +37,31 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     desk.style.setProperty("--dock-space", dockSpace + "px");
     schedule();
   }
-  function paintModules() {
+  function paintModules(entry) {
+    const door = cabinThreshold(deskTop, viewport.height);
+    const settle = Math.max(0, Math.min(1, (window.scrollY - door) / (deskTop - door)));
+    const gathering = !reduce.matches && entry > 0 && settle < 1;
+    toolbar.style.setProperty("--dock-light", gathering ? Math.max(0, (settle - .85) / .15) : 1);
+    const bounds = modules.map(slot => slot.getBoundingClientRect());
+    const first = bounds[0];
+    const layoutHeight = Math.max(...bounds.map(rect => rect.bottom)) - first.top;
+    const miniature = Math.min(.55, viewport.height * .62 / Math.max(1, layoutHeight));
+
     if (preferred && Math.abs(window.scrollY - preferredAt) > viewport.height * .25) preferred = null;
     let firstVisible, atReadingLine, preferredVisible, lastVisible;
-    for (const slot of modules) {
-      const { top, bottom } = slot.getBoundingClientRect();
+    for (const [i, slot] of modules.entries()) {
+      const { top, bottom, left } = bounds[i];
+      slot.classList.toggle("gathering", gathering);
+      if (gathering) {
+        // Gather the real windows into a small desk, then expand it into its document layout.
+        const spread = 1 - entry;
+        const x = (viewport.width / 2 - left) * (1 - miniature) + (i === 0 ? -1 : 1) * viewport.width * .38 * spread;
+        const previewY = viewport.height * .2 + (top - first.top) * miniature + (i - 1) * viewport.height * .25 * spread;
+        const restY = top + window.scrollY - deskTop;
+        const y = previewY * (1 - settle) + restY * settle - top;
+        slot.style.setProperty("--gather-transform", `translate(${x * (1 - settle)}px, ${y}px) scale(${miniature + (1 - miniature) * settle})`);
+        slot.style.setProperty("--gather-light", entry);
+      }
       const reveal = reduce.matches ? 1 : Math.max(0, Math.min(1, (viewport.height - top) / (viewport.height * .24)));
       slot.classList.toggle("arriving", reveal < 1);
       if (reveal < 1) slot.style.setProperty("--arrive", reveal.toFixed(3));
@@ -81,7 +101,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     camera.setAttribute("transform", view.transform);
     stage.style.setProperty("--entry", view.entry);
     stage.style.setProperty("--approach", view.progress);
-    paintModules();
+    paintModules(view.entry);
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(paint); }
 
@@ -117,7 +137,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     function arrive() {
       window.scrollTo({ top: destination(target), behavior: "instant" });
       if (window.location.hash !== link.hash) {
-        history.replaceState({ ...history.state, archiveOrigin: origin }, "");
+        history.replaceState({ ...history.state, archiveOrigin: origin, archiveReturn: null }, "");
         history.pushState(null, "", link.href);
       }
       preferred = target;
@@ -155,6 +175,12 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     const slot = event.target.closest(".desk-module");
     if (slot) { preferred = slot; preferredAt = window.scrollY; schedule(); }
   });
+  desk.addEventListener("click", event => {
+    const article = event.target.closest('a[href^="posts/"]');
+    if (!article || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const slot = article.closest(".desk-module");
+    if (slot) history.replaceState({ ...history.state, archiveReturn: { id: slot.id } }, "", "#" + slot.id);
+  });
   function restoreLocation(origin) {
     const target = document.getElementById(origin?.id || window.location.hash.slice(1) || "fleet");
     if (target && (modules.includes(target) || target === desk || target.id === "fleet")) {
@@ -169,16 +195,21 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
   }
   window.addEventListener("popstate", event => {
     cancelBoarding();
-    restoreLocation(event.state?.archiveOrigin);
+    restoreLocation(event.state?.archiveReturn || event.state?.archiveOrigin);
   });
   window.addEventListener("scroll", schedule, { passive: true });
   window.addEventListener("resize", measure);
   reduce.addEventListener("change", () => { cancelBoarding(); refreshMoon(); schedule(); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) cancelBoarding(); refreshMoon(); });
-  window.addEventListener("pagehide", () => clearInterval(moonTimer));
+  window.addEventListener("pagehide", () => {
+    clearInterval(moonTimer);
+    if (inside && !history.state?.archiveReturn) history.replaceState({ ...history.state, archiveReturn: { id: current?.id || desk.id } }, "");
+  });
   window.addEventListener("pageshow", event => {
     refreshMoon(); measure();
-    if (!event.persisted && window.location.hash && performance.getEntriesByType("navigation")[0]?.type === "navigate") restoreLocation();
+    const navigation = performance.getEntriesByType("navigation")[0]?.type;
+    if ((event.persisted || navigation === "back_forward") && history.state?.archiveReturn) restoreLocation(history.state.archiveReturn);
+    else if (!event.persisted && window.location.hash && navigation === "navigate") restoreLocation();
   });
   if (document.fonts) document.fonts.ready.then(measure);
   if (typeof ResizeObserver !== "undefined") {

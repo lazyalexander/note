@@ -21,6 +21,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
   let preferredAt = window.scrollY;
   let current;
   let dockSpace = 0;
+  let moduleBounds = [];
 
   function refreshMoon() {
     clearInterval(moonTimer);
@@ -35,6 +36,10 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     viewport = stage.getBoundingClientRect();
     dockSpace = Math.ceil(toolbar.getBoundingClientRect().height) + 16;
     desk.style.setProperty("--dock-space", dockSpace + "px");
+    moduleBounds = modules.map(slot => {
+      const { top, bottom, left, width } = slot.getBoundingClientRect();
+      return { top: top + window.scrollY, bottom: bottom + window.scrollY, left, width };
+    });
     schedule();
   }
   function paintModules(entry) {
@@ -42,7 +47,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     const settle = Math.max(0, Math.min(1, (window.scrollY - door) / (deskTop - door)));
     const gathering = !reduce.matches && entry > 0 && settle < 1;
     toolbar.style.setProperty("--dock-light", gathering ? Math.max(0, (settle - .85) / .15) : 1);
-    const bounds = modules.map(slot => slot.getBoundingClientRect());
+    const bounds = moduleBounds;
     const first = bounds[0];
     const layoutHeight = Math.max(...bounds.map(rect => rect.bottom)) - first.top;
     const miniature = Math.min(.55, viewport.height * .62 / Math.max(1, layoutHeight));
@@ -50,7 +55,8 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     if (preferred && Math.abs(window.scrollY - preferredAt) > viewport.height * .25) preferred = null;
     let firstVisible, atReadingLine, preferredVisible, lastVisible;
     for (const [i, slot] of modules.entries()) {
-      const { top, bottom, left } = bounds[i];
+      const { left } = bounds[i];
+      const top = bounds[i].top - window.scrollY, bottom = bounds[i].bottom - window.scrollY;
       slot.classList.toggle("gathering", gathering);
       if (gathering) {
         // Keep each entire window beyond its own edge until its turn to enter.
@@ -59,7 +65,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
         const slide = phase * phase * (3 - 2 * phase);
         const scale = miniature + (1 - miniature) * settle;
         const deskX = left + (viewport.width / 2 - left) * (1 - scale);
-        const previewY = viewport.height * .2 + (top - first.top) * miniature;
+        const previewY = viewport.height * .2 + (bounds[i].top - first.top) * miniature;
         const deskY = previewY * (1 - settle) + (top + window.scrollY - deskTop) * settle;
         const startX = i === 0 ? -bounds[i].width * scale - 16 : viewport.width + 16;
         const x = i === 2 ? deskX : startX + (deskX - startX) * slide;
@@ -162,6 +168,8 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     const legTime = distance => Math.min(1350, Math.max(240, distance / viewport.height * 960));
     const firstTime = legTime(Math.abs((crossesDoor ? door : to) - from));
     const secondTime = crossesDoor ? Math.min(1000, legTime(Math.abs(to - door))) : 0;
+    // Match velocity across the glass; cap both tangents to keep the path monotone.
+    const throughSpeed = crossesDoor ? Math.min(viewport.height / 1100, Math.abs(door - from) / firstTime, Math.abs(to - door) / secondTime) : 0;
     const started = performance.now();
     function advance(now) {
       if (controller.signal.aborted) return;
@@ -170,7 +178,9 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
       const secondLeg = crossesDoor && elapsed >= firstTime;
       const start = secondLeg ? door : from, end = crossesDoor && !secondLeg ? door : to;
       const t = secondLeg ? (elapsed - firstTime) / secondTime : elapsed / firstTime;
-      window.scrollTo({ top: start + (end - start) * t * t * (3 - 2 * t), behavior: "instant" });
+      const tangent = secondLeg ? secondTime * t * (1 - t) ** 2 : -firstTime * t ** 2 * (1 - t);
+      const position = start + (end - start) * t * t * (3 - 2 * t) + Math.sign(to - from) * throughSpeed * tangent;
+      window.scrollTo({ top: position, behavior: "instant" });
       requestAnimationFrame(advance);
     }
     requestAnimationFrame(advance);
@@ -220,6 +230,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     const observer = new ResizeObserver(measure);
     observer.observe(toolbar);
     observer.observe(desk);
+    for (const slot of modules) observer.observe(slot);
   }
   refreshMoon();
   measure();

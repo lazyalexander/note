@@ -134,6 +134,16 @@ test("manual scroll, reversing through the window and history restore share a si
   assert.ok(!ui.classes.has("in-cabin"));
 });
 
+test("automatic boarding keeps moving at matching speeds on both sides of the glass", () => {
+  const ui = setup(); ui.flush(); ui.enter();
+  const crossing = Math.min(1350, travel / height * 960);
+  ui.flush(crossing - 8); const before = ui.window.scrollY;
+  ui.flush(crossing); const at = ui.window.scrollY;
+  ui.flush(crossing + 8); const after = ui.window.scrollY;
+  assert.ok(at - before > 3 && after - at > 3);
+  assert.ok(Math.abs((at - before) - (after - at)) < 1);
+});
+
 test("automatic boarding can be interrupted before it changes focus or history", () => {
   const ui = setup();
   ui.flush(); ui.enter(); ui.flush(600);

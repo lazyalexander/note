@@ -1,4 +1,4 @@
-import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } from "./archive-camera.mjs?v=54";
+import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } from "./archive-camera.mjs?v=59";
 
 (function () {
   const world = document.getElementById("archive-world");
@@ -37,44 +37,17 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     dockSpace = Math.ceil(toolbar.getBoundingClientRect().height) + 16;
     desk.style.setProperty("--dock-space", dockSpace + "px");
     moduleBounds = modules.map(slot => {
-      const { top, bottom, left, width } = slot.getBoundingClientRect();
-      return { top: top + window.scrollY, bottom: bottom + window.scrollY, left, width };
+      const { top, bottom } = slot.getBoundingClientRect();
+      return { top: top + window.scrollY, bottom: bottom + window.scrollY };
     });
     schedule();
   }
   let sceneY = window.scrollY, lastPaint;
-  function paintModules(entry) {
-    const door = cabinThreshold(deskTop, viewport.height);
-    const settle = Math.max(0, Math.min(1, (sceneY - door) / (deskTop - door)));
-    const gathering = !reduce.matches && entry > 0 && settle < 1;
-    toolbar.style.setProperty("--dock-light", gathering ? Math.max(0, (settle - .85) / .15) : 1);
-    const bounds = moduleBounds;
-    const first = bounds[0];
-    const layoutHeight = Math.max(...bounds.map(rect => rect.bottom)) - first.top;
-    const miniature = Math.min(.55, viewport.height * .62 / Math.max(1, layoutHeight));
-
+  function paintModules() {
     if (preferred && Math.abs(window.scrollY - preferredAt) > viewport.height * .25) preferred = null;
     let firstVisible, atReadingLine, preferredVisible, lastVisible;
     for (const [i, slot] of modules.entries()) {
-      const { left } = bounds[i];
-      const top = bounds[i].top - window.scrollY, bottom = bounds[i].bottom - window.scrollY;
-      slot.classList.toggle("gathering", gathering);
-      if (gathering) {
-        // Keep each entire window beyond its own edge until its turn to enter.
-        const route = .7 * entry + .3 * settle;
-        const phase = Math.max(0, Math.min(1, (route - i * .23) / .47));
-        const slide = phase * phase * (3 - 2 * phase);
-        const scale = miniature + (1 - miniature) * settle;
-        const deskX = left + (viewport.width / 2 - left) * (1 - scale);
-        const previewY = viewport.height * .2 + (bounds[i].top - first.top) * miniature;
-        const deskY = previewY * (1 - settle) + (top + window.scrollY - deskTop) * settle;
-        const x = deskX;
-        const y = viewport.height + 16 + (deskY - viewport.height - 16) * slide;
-        slot.style.setProperty("--gather-transform", `translate(${x - left}px, ${y - top}px) scale(${scale})`);
-      }
-      const reveal = reduce.matches ? 1 : Math.max(0, Math.min(1, (viewport.height - top) / (viewport.height * .24)));
-      slot.classList.toggle("arriving", reveal < 1);
-      if (reveal < 1) slot.style.setProperty("--arrive", reveal.toFixed(3));
+      const top = moduleBounds[i].top - window.scrollY, bottom = moduleBounds[i].bottom - window.scrollY;
       if (!inside || bottom <= dockSpace || top >= viewport.height - 40) continue;
       firstVisible ??= slot;
       lastVisible = slot;
@@ -119,7 +92,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     camera.setAttribute("transform", view.transform);
     stage.style.setProperty("--entry", view.entry);
     stage.style.setProperty("--approach", view.progress);
-    paintModules(view.entry);
+    paintModules();
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(paint); }
 

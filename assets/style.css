@@ -1078,20 +1078,12 @@ html:has(.archive-world) { scroll-behavior: auto; }
   width: fit-content; max-width: 100%; margin-bottom: 1rem; padding: 0 .3rem;
   border: 1px solid var(--border); background: var(--bg-elev); box-shadow: 2px 2px 0 var(--border);
 }
-.desk-toolbar:not(:focus-within) { opacity: var(--dock-light, 1); }
 .desk-toolbar nav { display: flex; flex-wrap: wrap; }
 .desk-toolbar a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .65rem; color: var(--fg-dim); font: .8rem var(--read-sans); }
 .desk-toolbar .fleet-return { gap: .3rem; border-inline-end: 1px solid var(--border); }
 .desk-toolbar a[aria-current="location"] { box-shadow: inset 0 -2px var(--eva-purple); color: var(--fg); }
 .desk-toolbar a:hover { color: var(--eva-purple); }
 .desk-module { min-width: 0; scroll-margin-top: var(--dock-space, 4rem); }
-.desk-module.arriving:not(.gathering):not(:focus-within) > .notebook-window {
-  opacity: calc(.25 + .75 * var(--arrive, 1)); transform: translateY(calc((1 - var(--arrive, 1)) * 16px));
-}
-.desk-module.gathering > .notebook-window {
-  transform-origin: top left; transform: var(--gather-transform);
-  opacity: 1;
-}
 .desk-module.is-current .library-heading { background: color-mix(in srgb, var(--eva-purple) 16%, var(--window-title)); box-shadow: inset 3px 0 var(--eva-purple); }
 .desk-module:focus-visible { outline: 2px solid var(--eva-purple); outline-offset: 3px; }
 .desk-grid { display: grid; grid-template-columns: min(51%, 37rem) min(30%, 19rem); justify-content: space-between; gap: 1.5rem; align-items: start; }

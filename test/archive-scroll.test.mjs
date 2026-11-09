@@ -8,7 +8,7 @@ import { fleetEscortsHtml } from "../src/fleet.mjs";
 const source = (await readFile(new URL("../assets/archive-scroll.js", import.meta.url), "utf8"))
   .replace(/^import[^;]+;\s*/, "");
 const height = 800, deskTop = height * 2.44;
-const travel = deskTop - height * 1.08;
+const travel = cabinThreshold(deskTop, height);
 const viewAt = (t) => archiveCameraFrame(travel * t, deskTop, height);
 
 test("the approach begins with the full ship, banks past the towers and meets the painted rose", () => {
@@ -189,40 +189,24 @@ test("each module follows the same approach and lands focus and both navigation 
   assert.equal(new Set(windowPositions).size, 1);
 });
 
-test("all three windows gather while the aperture is still opening, and unwind on reverse scroll", () => {
-  const ui = setup();
-  function boxes(route) {
-    ui.window.scrollY = travel * route; ui.events.scroll(); ui.flush();
-    return ui.modules.map(slot => {
-      const [dx, dy, scale] = slot.style["--gather-transform"].match(/-?[\d.]+(?:e[+-]?\d+)?/g).map(Number);
-      const rect = slot.getBoundingClientRect();
-      return { x: rect.left + dx, right: rect.left + dx + rect.width * scale, y: rect.top + dy };
-    });
+test("the natural desk edge enters the viewport as the glass opens", () => {
+  for (const h of [568, 800, 1080]) {
+    const desk = 2.44 * h;
+    const firstVisible = desk - h;
+    assert.equal(archiveCameraFrame(firstVisible - 2, desk, h).entry, 0);
+    assert.ok(archiveCameraFrame(firstVisible + 4, desk, h).entry > 0);
+    assert.equal(archiveCameraFrame(desk, desk, h).entry, 1);
   }
-  const initial = boxes(.681);
-  assert.ok(initial.every(box => box.y > height));
-  const mid = boxes(.84);
-  assert.ok(mid[0].y < height && mid[2].y > height);
-  assert.ok(ui.classes.has("at-window"));
-  const later = boxes(.97);
-  assert.ok(later.every(box => box.y < height));
-  assert.deepEqual(boxes(.84), mid);
-  ui.window.scrollY = 0; ui.events.scroll(); ui.flush();
-  assert.ok(ui.modules.every(slot => !slot.classList.gathering));
 });
 
-test("scrolling reveals the windows without taking focus or adding history, including on reversal", () => {
+test("scrolling the desk updates its active module without taking focus", () => {
   const ui = setup(); ui.flush();
-  const [blog, about] = ui.modules;
-  ui.window.scrollY = deskTop - height + 180; ui.events.scroll(); ui.flush();
-  assert.ok(blog.classList.arriving && about.classList.arriving);
-  assert.ok(Number(blog.style["--arrive"]) > 0 && Number(about.style["--arrive"]) === 0);
+  const about = ui.modules[1];
   ui.window.scrollY = deskTop + 460; ui.events.scroll(); ui.flush();
-  assert.equal(about.classList.arriving, false);
   assert.ok(about.classList["is-current"]);
   assert.equal(about.focused, undefined);
   ui.window.scrollY = 0; ui.events.scroll(); ui.flush();
-  assert.ok(blog.classList.arriving && !about.classList["is-current"]);
+  assert.ok(!about.classList["is-current"]);
   assert.deepEqual(ui.historyEntries, []);
 });
 
@@ -231,7 +215,6 @@ test("history and reduced motion reach the requested module without playing the 
   assert.ok(ui.modules[2].focused);
   ui.window.location.hash = "#site-about"; ui.events.popstate(); ui.flush(); ui.flush();
   assert.ok(ui.modules[1].focused && ui.modules[1].classList["is-current"]);
-  assert.equal(ui.modules[1].classList.arriving, false);
   assert.deepEqual(ui.historyEntries, ["/note/?preview#site-help"]);
 });
 

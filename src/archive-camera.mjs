@@ -2,7 +2,8 @@ const clamp = (n) => Math.max(0, Math.min(1, n));
 const smooth = (n) => n * n * (3 - 2 * n);
 const rose = { x: 800, y: 584 };
 
-export const cabinThreshold = (deskTop, height) => Math.max(1, deskTop - height * 1.08);
+// With the desk at 244svh, the glass starts opening as the desk reaches the bottom edge.
+export const cabinThreshold = (deskTop, height) => Math.max(1, deskTop - height * .32);
 
 /** The whole route follows native document scroll, including on the way back. */
 export function archiveCameraFrame(scrollY, deskTop, height, reducedMotion = false) {

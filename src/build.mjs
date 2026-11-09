@@ -122,7 +122,7 @@ function layout({ title, body, back, scripts, wide, homeLink = href("") }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=56">
+<link rel="stylesheet" href="assets/style.css?v=59">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -465,7 +465,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=58"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=59"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

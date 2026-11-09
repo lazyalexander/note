@@ -112,8 +112,8 @@ function layout({ title, body, back, scripts, wide }) {
 window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=45">
-<link rel="stylesheet" href="assets/code.css?v=45">
+<link rel="stylesheet" href="assets/style.css?v=46">
+<link rel="stylesheet" href="assets/code.css?v=46">
 </head>
 <body>
 ${termBarHtml()}
@@ -124,7 +124,8 @@ ${body}
 </div>`}
 ${statuslineHtml()}
 ${scriptTags}
-<script type="module" src="assets/search-box.js?v=45"></script>
+<script src="assets/archive-scroll.js?v=46" defer></script>
+<script type="module" src="assets/search-box.js?v=46"></script>
 </body>
 </html>
 `;
@@ -134,7 +135,7 @@ async function main() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(join(distDir, "posts"), { recursive: true });
   await mkdir(join(distDir, "assets"), { recursive: true });
-  await cp(join(root, "assets", "observatory.svg"), join(distDir, "assets", "observatory.svg"));
+  await cp(join(root, "assets", "archive-city.svg"), join(distDir, "assets", "archive-city.svg"));
   await cp(join(root, "assets", "style.css"), join(distDir, "assets", "style.css"));
   await cp(join(root, "assets", "code.css"), join(distDir, "assets", "code.css"));
   // Bundle split engine sources into one browser file (avoids multi-.mjs load issues).
@@ -175,6 +176,7 @@ async function main() {
   // the two long-tracked split sources are also mirrored into assets/
   for (const f of ["text-scrub.mjs", "tag-match.mjs"]) await cp(join(root, "src", f), join(root, "assets", f));
   await cp(join(root, "assets", "terminal.js"), join(distDir, "assets", "terminal.js"));
+  await cp(join(root, "assets", "archive-scroll.js"), join(distDir, "assets", "archive-scroll.js"));
   await cp(join(root, "assets", "reader.js"), join(distDir, "assets", "reader.js"));
   await cp(join(root, "assets", "nav.js"), join(distDir, "assets", "nav.js"));
   await cp(join(root, "assets", "search-box.js"), join(distDir, "assets", "search-box.js"));
@@ -230,14 +232,14 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=45"></script>`;
-  const navScript = `<script type="module" src="assets/nav.js?v=45"></script>`;
+<script type="module" src="assets/terminal.js?v=46"></script>`;
+  const navScript = `<script type="module" src="assets/nav.js?v=46"></script>`;
   const scripts = `${dataScript}
-<script src="assets/reader.js?v=45" defer></script>
+<script src="assets/reader.js?v=46" defer></script>
 ${navScript}`;
   const pageScripts = `${dataScript}\n${navScript}`;
   const searchScripts = `${dataScript}
-<script type="module" src="assets/search.js?v=45"></script>
+<script type="module" src="assets/search.js?v=46"></script>
 ${navScript}`;
 
   const engineSrc = await readFile(join(root, "assets", "term-engine.js"), "utf8");
@@ -337,23 +339,29 @@ ${railHtml(post)}
     })
     .join("\n")}</ul>`;
 
-  const indexBody = `<main class="wrap home library">
-<section class="hero">
-  <img class="library-scene" src="assets/observatory.svg" alt="" aria-hidden="true">
+  const indexBody = `<main class="home library archive-world" id="archive-world">
+<div class="archive-stage" aria-hidden="true"><div class="archive-haze"></div><img class="archive-city" src="assets/archive-city.svg" alt=""></div>
+<section class="archive-arrival" aria-labelledby="archive-title">
   <p class="library-kicker">~/note <span>个人笔记 / PERSONAL ARCHIVE</span></p>
-  <h1>留下一点想法。</h1>
+  <h1 id="archive-title">留下一点想法。</h1>
   <p class="hero-sub">写下、整理，再慢慢读。</p>
+  <a class="archive-cue" href="#notebook">向下滚动 · 进入笔记 <span aria-hidden="true">↓</span></a>
 </section>
-<form class="home-search" action="search.html" method="get" role="search">
-  <label for="home-query">搜索笔记</label>
-  ${searchFieldHtml("home-query", "home-search-feedback")}
-  <p class="search-hint">输入 find 关键词搜索，也可直接输入关键词；按 <kbd>/</kbd> 使用命令栏。</p>
-  <p id="home-search-feedback" class="search-feedback" role="status" hidden></p>
-</form>
-<div class="library-heading"><h2>笔记目录</h2><span>${posts.length} 篇 · ${seriesList.length} 个文件夹</span></div>
-${seriesHtml}
-<p class="library-help">展开文件夹，选择一篇开始阅读。<a href="posts/00-help/help.html">使用说明 ↗</a></p>
-<p class="footer">note // tui</p>
+<section class="notebook-window" id="notebook" aria-labelledby="notebook-title">
+  <div class="library-heading"><h2 id="notebook-title">笔记</h2><span>${posts.length} 篇 · ${seriesList.length} 个文件夹</span></div>
+  <div class="notebook-content">
+    <form class="home-search" action="search.html" method="get" role="search">
+      <label for="home-query">搜索笔记</label>
+      ${searchFieldHtml("home-query", "home-search-feedback")}
+      <p class="search-hint">输入 find 关键词搜索，也可直接输入关键词；按 <kbd>/</kbd> 使用命令栏。</p>
+      <p id="home-search-feedback" class="search-feedback" role="status" hidden></p>
+    </form>
+    <div class="notebook-directory">目录</div>
+    ${seriesHtml}
+    <p class="library-help">展开文件夹，选择一篇开始阅读。<a href="posts/00-help/help.html">使用说明 ↗</a></p>
+  </div>
+</section>
+<p class="footer archive-footer">note // tui</p>
 </main>`;
 
   await writeFile(

@@ -966,20 +966,20 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px soli
 
 /* Observatory: cool paper, cobalt geometry and small desktop windows. */
 :root, :root[data-theme="tokyo"] {
-  --bg: #101b30; --bg-elev: #172841; --bg-hl: #213a58;
-  --fg: #dcecf6; --fg-dim: #b7cddd; --comment: #91abc0;
-  --border: #36536e; --code: #15263d; --sel: #294967;
-  --eva-purple: #a4caef; --eva-purple-dim: #4e769d;
-  --eva-green: #9fd9e5; --eva-orange: #e2bca9; --eva-blue: #9bc6ff;
-  --shadow: rgba(3, 12, 28, .28); --window-title: #294b6b;
+  --bg: #1b1528; --bg-elev: #251d35; --bg-hl: #352846;
+  --fg: #f4effa; --fg-dim: #d4c7e4; --comment: #b7a6ca;
+  --border: #584368; --code: #241b32; --sel: #443156;
+  --eva-purple: #d4b5f0; --eva-purple-dim: #8f70ad;
+  --eva-green: #cfbde4; --eva-orange: #e0bbc9; --eva-blue: #c7a6f0;
+  --shadow: rgba(3, 12, 28, .28); --window-title: #48345d;
 }
 :root[data-theme="day"] {
-  --bg: #edf4f8; --bg-elev: #f8fcfe; --bg-hl: #e1eef6;
-  --fg: #233b58; --fg-dim: #425e78; --comment: #5b7790;
-  --border: #a8c5d9; --code: #e6f0f7; --sel: #d8eaf6;
-  --eva-purple: #315fa3; --eva-purple-dim: #8eb2d2;
-  --eva-green: #2c6886; --eva-orange: #8b5361; --eva-blue: #285fa8;
-  --shadow: rgba(40, 76, 115, .1); --window-title: #d1eaf5;
+  --bg: #f5f1f9; --bg-elev: #fdfbff; --bg-hl: #ece3f3;
+  --fg: #352543; --fg-dim: #59476a; --comment: #746181;
+  --border: #c0acce; --code: #eee6f5; --sel: #e8dbf3;
+  --eva-purple: #704894; --eva-purple-dim: #b197c5;
+  --eva-green: #785b91; --eva-orange: #975d7f; --eva-blue: #70479d;
+  --shadow: rgba(40, 76, 115, .1); --window-title: #e4d6ef;
 }
 body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--eva-blue) 9%, transparent), transparent 36rem); }
 .library, .search-page { max-width: 58rem; }
@@ -1032,4 +1032,38 @@ body { background-image: radial-gradient(circle at 85% 0%, color-mix(in srgb, va
   .library .hero h1 { max-width: 90%; }
   .library-heading { padding-inline: .75rem; }
   .library .folders { padding-inline: .5rem; }
+}
+
+/* Archive city: scroll from the skyline into a single, usable notebook window. */
+.library.archive-world { max-width: none; padding: 0 1.5rem 3rem; position: relative; isolation: isolate; }
+.archive-stage { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
+.archive-haze { position: absolute; inset: 0; background: radial-gradient(ellipse at 25% 15%, var(--bg-elev), transparent 65%); }
+.archive-city { position: absolute; width: max(1200px, 110vw); height: 110vh; object-fit: cover; object-position: center 65%; bottom: -6vh; left: -5vw; transform-origin: 70% 55%; will-change: transform; opacity: .88; }
+:root[data-theme="tokyo"] .archive-city { opacity: .4; filter: saturate(.8); }
+.archive-arrival { position: relative; min-height: calc(100svh - var(--sl-h)); max-width: 76rem; margin: 0 auto; padding: 9vh 1rem 7rem; }
+.archive-arrival .library-kicker { margin-bottom: 2.7rem; }
+.archive-arrival h1 { font-size: clamp(2.6rem, 5.5vw, 5.2rem); font-weight: 500; letter-spacing: .03em; margin: 0 0 1rem; line-height: 1.25; max-width: 10em; text-shadow: 0 2px 24px var(--bg); }
+.archive-arrival .hero-sub { color: var(--fg-dim); font-size: 1rem; }
+.archive-cue { position: absolute; left: 1rem; bottom: 3rem; display: flex; flex-direction: column; gap: .7rem; font-size: .8rem; letter-spacing: .09em; color: var(--fg); background: color-mix(in srgb, var(--bg-elev) 85%, transparent); border: 1px solid var(--border); padding: .7rem 1rem; }
+.archive-cue span { font-size: 1.3rem; }
+.notebook-window { max-width: 58rem; margin: 0 auto; scroll-margin-top: 2rem; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg-elev) 96%, transparent); box-shadow: 7px 7px 0 color-mix(in srgb, var(--eva-purple) 22%, transparent), 0 18px 80px var(--shadow); }
+.notebook-window .library-heading { border: 0; border-bottom: 1px solid var(--border); padding: .75rem 1.25rem; }
+.notebook-content { padding: 1.5rem 1.5rem 1rem; }
+.library .notebook-window .home-search { margin: 0 0 1.8rem; }
+.library .notebook-window .folders { padding: 0; border: 0; border-top: 1px solid var(--border); box-shadow: none; background: transparent; }
+.notebook-directory { margin-bottom: .6rem; font: .75rem/1.5 Consolas, Menlo, var(--read-sans); color: var(--comment); }
+.archive-footer { position: relative; max-width: 58rem; margin: 2rem auto; color: var(--fg-dim); }
+@media (max-width: 600px) {
+  .library.archive-world { padding-inline: 1rem; }
+  .archive-arrival { padding: 3rem 0 7rem; min-height: calc(90svh - var(--sl-h)); }
+  .archive-arrival h1 { font-size: 2.5rem; }
+  .archive-arrival .library-kicker { gap: .5rem; }
+  .archive-city { left: -500px; width: 1250px; height: 90svh; object-fit: cover; object-position: 60% center; opacity: .65; }
+  .archive-cue { left: 0; bottom: 2rem; }
+  .notebook-content { padding: 1rem .85rem; }
+  .notebook-window .library-heading { padding-inline: .85rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .archive-city { will-change: auto; transform: none !important; }
 }

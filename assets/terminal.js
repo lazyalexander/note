@@ -209,8 +209,7 @@ import {
   }
 
   function setTheme(name) {
-    try { localStorage.setItem("note-theme", name); } catch (e) {}
-    if (window.__applyTheme) window.__applyTheme();
+    if (window.__applyTheme) window.__applyTheme(name);
     notify(t("主题 · {0}", name));
   }
   function cycleTheme() {

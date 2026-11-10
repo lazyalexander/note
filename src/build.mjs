@@ -5,7 +5,7 @@ import { marked } from "marked";
 import hljs from "highlight.js";
 import { loadContent } from "./content.mjs";
 import { partitionHomeSeries } from "./home-content.mjs";
-import { resolveTheme } from "./themes.mjs";
+import { installTheme, localTheme } from "./themes.mjs";
 import { formatMessage, languages } from "../assets/messages.mjs";
 import { exhaustHtml, fleetEscortsHtml } from "./fleet.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
@@ -118,8 +118,7 @@ function layout({ title, body, back, scripts, wide, homeLink = href("") }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <base href="${baseHref}">
 <title>${escapeHtml(title)}</title>
-<script>(function(){var resolve=${resolveTheme.toString()};
-window.__applyTheme=function(){var stored=null;try{stored=localStorage.getItem("note-theme")}catch(e){}var theme=resolve(stored);try{if(stored!==theme)localStorage.setItem("note-theme",theme)}catch(e){}var d=document.documentElement;d.setAttribute("data-theme",theme);d.setAttribute("data-theme-mode",theme);return{mode:theme,theme:theme}};window.__applyTheme()})();</script>
+<script>(${installTheme.toString()})(${localTheme.toString()});</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
 <link rel="stylesheet" href="assets/style.css?v=59">
@@ -248,7 +247,7 @@ async function main() {
   const postsJsonLiteral = JSON.stringify(postsIndex).replace(/</g, "\\u003c");
   const seriesJsonLiteral = JSON.stringify(searchIndex.series).replace(/</g, "\\u003c");
   const dataScript = `<script>window.__POSTS__=${postsJsonLiteral};window.__SERIES__=${seriesJsonLiteral};window.__BASE__=${JSON.stringify(BASE)};</script>
-<script type="module" src="assets/terminal.js?v=49"></script>`;
+<script type="module" src="assets/terminal.js?v=60"></script>`;
   const navScript = `<script type="module" src="assets/nav.js?v=49"></script>`;
   const scripts = `${dataScript}
 <script src="assets/reader.js?v=47" defer></script>

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeSearchInput, createTermEngine, searchDocs } from "../src/term-engine.mjs";
-import { THEME_NAMES, resolveTheme } from "../src/themes.mjs";
+import { THEME_NAMES, localTheme } from "../src/themes.mjs";
 
 const docs = [{ stem: "heart", title: "心跳", body: "心跳故事", tags: ["poe"] }];
 test("home /find, bare find and direct expressions return the same search results", () => {
@@ -22,8 +22,9 @@ test("search input handles aliases without damaging regex, quoted text or query 
   assert.equal(searchDocs(docs, normalizeSearchInput("/find (心跳")).ok, false);
   assert.equal(normalizeSearchInput("/find"), "");
 });
-test("only day and tokyo are available, and legacy browser preferences migrate", () => {
+test("local daytime starts at 06:00 and ends at 18:00", () => {
   assert.deepEqual(THEME_NAMES, ["day", "tokyo"]);
-  for (const old of ["day", "paper"]) assert.equal(resolveTheme(old), "day");
-  for (const old of [null, "tokyo", "auto", "ink", "unknown"]) assert.equal(resolveTheme(old), "tokyo");
+  for (let hour = 0; hour < 24; hour++) {
+    assert.equal(localTheme(hour), hour >= 6 && hour < 18 ? "day" : "tokyo");
+  }
 });

@@ -395,6 +395,7 @@ ${railHtml(post)}
         <stop stop-color="var(--jet-violet)" stop-opacity="0"/><stop offset=".28" stop-color="var(--jet-violet)" stop-opacity=".22"/>
         <stop offset=".63" stop-color="var(--jet-violet)" stop-opacity=".78"/><stop offset=".88" stop-color="#e1bcff"/><stop offset="1" stop-color="#fff9ff"/>
       </linearGradient>
+      <clipPath id="flagship-hull"><path d="M0 0 H143 V269 L175 274 L385 315 L392 268 V0 H1536 V1024 H0Z"/></clipPath>
       <g id="plume">
         <ellipse cx="-74" rx="144" ry="21" fill="url(#exhaust-halo)"/>
         <path d="M6 -10 C-15 -12 -27 -7 -46 -8 S-84 -10 -111 -5 S-178 -5 -224 -1 C-180 0 -156 6 -122 4 S-71 12 -45 8 S-12 11 6 9Z" fill="url(#exhaust-stream)"/>
@@ -403,7 +404,13 @@ ${railHtml(post)}
     </defs>
     <g class="archive-camera">
       ${exhaustHtml([[119, 304, .91], [86, 352, 1.06], [73, 425, 1.14]], 14)}
-      <image href="assets/cathedral-ship.webp" width="1536" height="1024"/>
+      <image clip-path="url(#flagship-hull)" href="assets/cathedral-ship.webp" width="1536" height="1024"/>
+      <!-- Sloped armor cap joins the engine housing to the aft tower. -->
+      <g>
+        <path fill="#745781" d="M169 279 L182 271 L387 310 L384 319Z"/>
+        <path fill="#d5bada" d="M169 279 L182 270 L387 309 L379 315Z"/>
+        <path fill="none" stroke="#97799e" stroke-width="1.5" d="M214 276 L204 284 M255 284 L245 292 M296 292 L286 300 M337 300 L327 308"/>
+      </g>
       <g class="chapel-callout">
         <path d="M800 600 L726 881 H520" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/>
         <circle cx="800" cy="600" r="5" fill="currentColor"/>

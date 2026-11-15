@@ -1,4 +1,4 @@
-import { languages, formatMessage } from "./messages.mjs?v=49";
+import { languages, formatMessage } from "./messages.mjs?v=66";
 
 const picker = document.getElementById("ui-language");
 const key = "note-language";

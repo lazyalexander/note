@@ -1207,3 +1207,6 @@ html:has(.archive-world) { scroll-behavior: auto; }
   .statusline .theme-toggle { min-width: 36px; }
   .statusline .sl-btn kbd, .theme-toggle [data-msg] { display: none; }
 }
+
+html:lang(zh) .article-en,
+html:not(:lang(zh)) .article-zh { display: none; }

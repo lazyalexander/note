@@ -67,6 +67,14 @@ function ui(source, ...values) {
   return `<span data-msg="${escapeHtml(source)}"${args}>${escapeHtml(formatMessage("zh", source, ...values))}</span>`;
 }
 
+function bilingual(zh, en, tag = "span") {
+  return `<${tag} class="article-zh" lang="zh-CN">${zh}</${tag}><${tag} class="article-en" lang="en">${en}</${tag}>`;
+}
+
+function postTitle(post) {
+  return post.zhTitle ? bilingual(escapeHtml(post.zhTitle), escapeHtml(post.title)) : escapeHtml(post.title);
+}
+
 function searchFieldHtml(id, feedbackId) {
   return `<div class="search-box"><div class="home-search-field"><span aria-hidden="true">⌕</span><input id="${id}" aria-describedby="${feedbackId}" name="q" type="search" enterkeyhint="search" required data-msg-placeholder="find 关键词、标题或 tag:标签" placeholder="find 关键词、标题或 tag:标签" autocomplete="off"><button class="search-clear" type="button" data-msg-aria-label="清空搜索" aria-label="清空搜索" hidden>×</button><button type="submit">${ui("搜索")} <span aria-hidden="true">↗</span></button></div></div>`;
 }
@@ -121,7 +129,7 @@ function layout({ title, body, back, scripts, wide, homeLink = href("") }) {
 <script>(${installTheme.toString()})(${localTheme.toString()});</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=59">
+<link rel="stylesheet" href="assets/style.css?v=65">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -132,7 +140,7 @@ ${body}
 <p class="footer">note // tui</p>
 </div>`}
 ${statuslineHtml(homeLink)}
-<script type="module" src="assets/language.js?v=49"></script>
+<script type="module" src="assets/language.js?v=66"></script>
 ${scriptTags}
 <script type="module" src="assets/search-box.js?v=49"></script>
 </body>
@@ -205,7 +213,7 @@ async function main() {
   const posts = [];
 
   for (const [si, s] of seriesList.entries()) {
-    s.posts = s.posts.map((src, pi) => {
+    s.posts = await Promise.all(s.posts.map(async (src, pi) => {
       const { stem, md, meta } = src;
       const title = extractTitle(md, src.name);
       const tags = Array.isArray(meta.tags)
@@ -227,9 +235,27 @@ async function main() {
         stem, title, outName: stem + ".html", htmlBody, tags, meta, outline, minutes,
         series: s, seriesIndex: si, index: pi,
       };
-      posts.push(post);
+      const translation = await readFile(join(contentDir, s.dir, "zh", src.name + ".md"), "utf8").catch(error => {
+        if (error.code !== "ENOENT") throw error;
+        return null;
+      });
+      if (translation) {
+        post.zhTitle = extractTitle(translation, src.name);
+        const sections = html => html.split(/<h[23]\b[^>]*>[\s\S]*?<\/h[23]>/gi);
+        const translated = marked.parse(translation).replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, "");
+        const headings = [...translated.matchAll(/<h([23])>([\s\S]*?)<\/h\1>/gi)];
+        const en = sections(htmlBody);
+        const zh = sections(translated);
+        if (zh.length !== en.length) throw new Error("Translation outline mismatch: " + stem);
+        post.htmlBody = bilingual(zh[0], en[0], "div");
+        outline.forEach((o, i) => {
+          o.label = bilingual(headings[i][2], escapeHtml(o.text));
+          post.htmlBody += `<h${o.level} id="${o.id}">${o.label}</h${o.level}>` + bilingual(zh[i + 1], en[i + 1], "div");
+        });
+      }
       return post;
-    });
+    }));
+    posts.push(...s.posts);
   }
 
   const postsIndex = posts.map((p) => ({
@@ -285,7 +311,7 @@ ${navScript}`;
       .map((q, i) => {
         const n = String(i + 1).padStart(2, "0");
         const cls = q.stem === post.stem ? ' class="active" aria-current="page"' : "";
-        return `<a${cls} href="posts/${q.outName}"><span class="rail-number">${n}</span><span class="rail-text">${escapeHtml(q.title)}</span></a>`;
+        return `<a${cls} href="posts/${q.outName}"><span class="rail-number">${n}</span><span class="rail-text">${postTitle(q)}</span></a>`;
       })
       .join("\n");
 
@@ -298,31 +324,31 @@ ${navScript}`;
       : "";
     const outlineHtml = post.outline.length
       ? post.outline
-          .map((o) => `<a href="#${o.id}" data-target="${o.id}"${o.level === 3 ? ' class="subsection"' : ""}>${escapeHtml(o.text)}</a>`)
+          .map((o) => `<a href="#${o.id}" data-target="${o.id}"${o.level === 3 ? ' class="subsection"' : ""}>${o.label || escapeHtml(o.text)}</a>`)
           .join("\n")
       : "";
     const prev = sp[idx - 1];
     const next = sp[idx + 1];
     const pager = `<nav class="pager">${
-      prev ? `<a class="prev" href="posts/${prev.outName}"><small>${ui("上一篇")}</small><span>${escapeHtml(prev.title)}</span></a>` : "<span></span>"
+      prev ? `<a class="prev" href="posts/${prev.outName}"><small>${ui("上一篇")}</small><span>${postTitle(prev)}</span></a>` : "<span></span>"
     }${
-      next ? `<a class="next" href="posts/${next.outName}"><small>${ui("下一篇")}</small><span>${escapeHtml(next.title)}</span></a>` : "<span></span>"
+      next ? `<a class="next" href="posts/${next.outName}"><small>${ui("下一篇")}</small><span>${postTitle(next)}</span></a>` : "<span></span>"
     }</nav>`;
     const body = `<div class="reading-progress"><div></div></div>
 <div class="reader-grid">
   <aside class="chapter-rail">
     <a class="back-to-book" href="${href("#notebook")}">${ui("← 目录")}</a>
-    <div class="rail-series">${escapeHtml(post.series.title)}</div>
+    <div class="rail-series">${ui(post.series.title)}</div>
     ${post.series.description ? `<p class="rail-desc">${escapeHtml(post.series.description)}</p>` : ""}
     <nav class="chapter-navigation" data-msg-aria-label="本文件夹下的文章" aria-label="本文件夹下的文章">
 ${railHtml(post)}
     </nav>
   </aside>
   <main class="reading-main">
-    <div class="reader-topline"><a href="${href("#archive-desk")}">${ui("首页")}</a><span>/</span><span>${escapeHtml(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">${ui("约 {0} 分钟阅读", post.minutes)}</span></div>
+    <div class="reader-topline"><a href="${href("#archive-desk")}">${ui("首页")}</a><span>/</span><span>${ui(post.series.title)}</span><span>/</span><span>${n}</span><span class="reading-time">${ui("约 {0} 分钟阅读", post.minutes)}</span></div>
     <header class="chapter-heading">
       <p class="eyebrow"><span class="chapter-badge">${n}</span>${escapeHtml(post.stem)}.md</p>
-      <h1>${escapeHtml(post.title)}</h1>
+      <h1>${postTitle(post)}</h1>
       ${tagsHtml}
     </header>
     ${outlineHtml ? `<details class="mobile-outline"><summary><span>${ui("本文内容")}</span></summary><nav>${outlineHtml}</nav></details>` : ""}
@@ -351,8 +377,8 @@ ${railHtml(post)}
   const seriesHtml = `<ul class="folders">${homeGroups.blog
     .map((s) => {
       const desc = s.description ? `<span class="folder-desc">${escapeHtml(s.description)}</span>` : "";
-      const articles = s.posts.map((p, i) => `<li><a class="home-post" data-nav href="posts/${p.outName}"><span class="home-post-number">${String(i + 1).padStart(2, "0")}</span><span class="home-post-title">${escapeHtml(p.title)}</span><span class="home-post-time">${ui("{0} 分钟", p.minutes)}</span></a></li>`).join("\n");
-      return `<li><details class="folder-group"><summary class="folder" data-nav><span class="folder-chevron" aria-hidden="true">›</span><span class="folder-body"><span class="folder-name">${escapeHtml(s.title)}</span>${desc}</span><span class="folder-count">${ui("{0} 篇", s.posts.length)}</span></summary><ul class="home-posts">${articles}</ul></details></li>`;
+      const articles = s.posts.map((p, i) => `<li><a class="home-post" data-nav href="posts/${p.outName}"><span class="home-post-number">${String(i + 1).padStart(2, "0")}</span><span class="home-post-title">${postTitle(p)}</span><span class="home-post-time">${ui("{0} 分钟", p.minutes)}</span></a></li>`).join("\n");
+      return `<li><details class="folder-group"><summary class="folder" data-nav><span class="folder-chevron" aria-hidden="true">›</span><span class="folder-body"><span class="folder-name">${ui(s.title)}</span>${desc}</span><span class="folder-count">${ui("{0} 篇", s.posts.length)}</span></summary><ul class="home-posts">${articles}</ul></details></li>`;
     })
     .join("\n")}</ul>`;
 

@@ -9,12 +9,12 @@ test("home windows partition existing content without moving posts or losing glo
   const groups = partitionHomeSeries(series);
   assert.deepEqual(groups.help.map((s) => s.dir), ["00-help", "01-blog"]);
   assert.deepEqual(groups.about.map((s) => s.dir), ["01-blog"]);
-  assert.deepEqual(groups.blog.map((s) => s.dir), ["02-poe"]);
+  assert.deepEqual(groups.blog.map((s) => s.dir), ["02-social-sciences"]);
   assert.deepEqual(groups.about.flatMap((s) => s.posts.map((p) => p.name)), ["02-tui-notes"]);
   assert.ok(groups.help.flatMap((s) => s.posts).some((p) => p.name === "01-how-to-write"));
-  assert.equal(groups.blog.flatMap((s) => s.posts).length, 3);
+  assert.equal(groups.blog.flatMap((s) => s.posts).length, 1);
   const all = Object.values(groups).flat().flatMap((s) => s.posts);
-  assert.equal(new Set(all.map((p) => p.stem)).size, 6);
+  assert.equal(new Set(all.map((p) => p.stem)).size, 4);
   assert.ok(all.some((p) => p.stem === "00-help/help"));
   const indexedPosts = series.flatMap((folder) => folder.posts.map((post, index) => ({
     ...post, title: post.md.match(/^# (.+)/m)[1], htmlBody: "", outName: post.stem + ".html",
@@ -22,7 +22,7 @@ test("home windows partition existing content without moving posts or losing glo
   })));
   const index = buildSearchIndex(series, indexedPosts);
   assert.equal(index.series.length, 3);
-  assert.equal(index.docs.length, 6);
+  assert.equal(index.docs.length, 4);
   assert.ok(index.docs.some((p) => p.href === "posts/00-help/help.html"));
   assert.ok(index.docs.some((p) => p.href === "posts/01-blog/02-tui-notes.html"));
 });

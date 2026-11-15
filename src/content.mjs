@@ -40,7 +40,7 @@ export async function loadContent(contentDir) {
     const files = (await readdir(sdir))
       .filter((f) => f.endsWith(".md") && !/^[._]/.test(f))
       .sort(collator.compare);
-    if (!files.length) continue;
+    if (!files.length && !smeta.title) continue;
     const posts = [];
     for (const file of files) {
       const name = file.replace(/\.md$/, "");

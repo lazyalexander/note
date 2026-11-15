@@ -7,7 +7,7 @@ import { loadContent } from "./content.mjs";
 import { partitionHomeSeries } from "./home-content.mjs";
 import { installTheme, localTheme } from "./themes.mjs";
 import { formatMessage, languages } from "../assets/messages.mjs";
-import { exhaustHtml, fleetEscortsHtml } from "./fleet.mjs";
+import { exhaustHtml, fleetEscortsHtml, portLeader } from "./fleet.mjs";
 import { buildSearchIndex } from "./search-index.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -454,11 +454,7 @@ ${railHtml(post)}
         <path fill="#d5bada" d="M169 279 L182 270 L387 309 L379 315Z"/>
         <path fill="none" stroke="#97799e" stroke-width="1.5" d="M214 276 L204 284 M255 284 L245 292 M296 292 L286 300 M337 300 L327 308"/>
       </g>
-      <g class="chapel-callout">
-        <path d="M800 600 L726 881 H520" fill="none" stroke="currentColor" vector-effect="non-scaling-stroke"/>
-        <circle cx="800" cy="600" r="5" fill="currentColor"/>
-        <text x="520" y="862" fill="currentColor" data-msg="档案舱">档案舱</text>
-      </g>
+      ${portLeader("archive-leader", 800, 584, 726, 520, 881)}
     </g>
   </svg>
   </div>
@@ -470,7 +466,10 @@ ${railHtml(post)}
   </svg>
 </div>
 <section class="archive-journey" id="fleet" tabindex="-1" aria-labelledby="archive-title">
-  <div class="project-orbit"><a id="project-ship" class="project-ship" href="projects.html">${ui("项目介绍")} ↗</a></div>
+  <div class="project-orbit">
+    <a id="project-ship" class="fleet-callout project-ship" href="projects.html">${ui("项目介绍")}</a>
+    <a id="archive-ship" class="fleet-callout archive-ship" href="#archive-desk">${ui("档案舱")}</a>
+  </div>
   <div class="archive-arrival">
     <header class="archive-masthead">
       <span class="site-signature">~/note</span>
@@ -515,7 +514,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=68"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=75"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

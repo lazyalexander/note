@@ -15,6 +15,14 @@ export function exhaustHtml(nozzles, angle) {
   </g>`).join("");
 }
 
+// Both the port and the leader are drawn in the hull illustration's coordinates.
+export function portLeader(id, x, y, bendX, endX, endY) {
+  return `<g class="port-leader">
+    <path id="${id}" d="M${x} ${y} L${bendX} ${endY} H${endX}" vector-effect="non-scaling-stroke"/>
+    <circle cx="${x}" cy="${y}" r="4" vector-effect="non-scaling-stroke"/>
+  </g>`;
+}
+
 export function fleetEscortsHtml() {
   return escorts.map(({ hull, wide, tall, nozzles, angle, depth }) => {
     const [x, y, width] = wide;
@@ -24,6 +32,7 @@ export function fleetEscortsHtml() {
       <g transform="rotate(${formationHeading - angle} 256 192)">
         ${exhaustHtml(nozzles, angle)}
         <image href="assets/fleet/${hull}.webp" width="512" height="384" filter="url(#flagship-palette)"/>
+        ${hull === "rearguard" ? `<g transform="rotate(${angle - formationHeading} 172 223)">${portLeader("project-leader", 172, 223, 126, 28, 363)}</g>` : ""}
       </g>
     </svg>`;
   }).join("\n");

@@ -1059,8 +1059,6 @@ html:has(.archive-world) { scroll-behavior: auto; }
 }
 .fleet-formation { position: absolute; inset: 0; width: min(100%, 184svh); margin-inline: auto; }
 .ship-plate { position: absolute; left: 27%; top: 19%; width: 66%; height: 69%; overflow: visible; }
-.chapel-callout { color: var(--fg-dim); opacity: clamp(0, 1 - var(--approach, 0) * 4, 1); }
-.chapel-callout text { font: 21px var(--read-serif); letter-spacing: .14em; }
 .archive-journey { height: 244svh; position: relative; }
 .archive-arrival { position: relative; height: calc(100svh - var(--sl-h)); max-width: 84rem; margin: 0 auto; padding-top: clamp(1rem, 3.5vh, 2.5rem); }
 .archive-masthead { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--border); padding-bottom: .65rem; }
@@ -1116,7 +1114,6 @@ html:has(.archive-world) { scroll-behavior: auto; }
   .library.archive-world { padding-inline: 1rem; }
   .archive-arrival h1 { margin-top: 4vh; }
   .archive-masthead { padding-bottom: .3rem; }
-  .chapel-callout text { font-size: 42px; }
   .desk-sidebar { grid-template-columns: minmax(0, 1fr); }
   /* Give the final stacked window room to scroll into the reading area. */
   .desk-sidebar > .desk-module:last-child { min-block-size: 65svh; }
@@ -1211,18 +1208,20 @@ html:has(.archive-world) { scroll-behavior: auto; }
 html:lang(zh) .article-en,
 html:not(:lang(zh)) .article-zh { display: none; }
 
-.project-orbit { position: absolute; z-index: 1; top: 0; left: 50%; width: min(100vw, 184svh); height: 100svh; transform: translateX(-50%); pointer-events: none; }
-.project-ship { position: absolute; left: 15.5%; top: 50%; width: 14%; aspect-ratio: 4/3; transform: translate(-50%, -50%); display: flex; align-items: end; justify-content: center; gap: .3em; white-space: nowrap; color: var(--fg); pointer-events: auto; font: .9rem var(--read-serif); }
-.project-ship:hover, .project-ship:focus-visible { text-decoration: underline; }
+.project-orbit { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+.port-leader { color: var(--fg-dim); }
+.port-leader path { fill: none; stroke: currentColor; stroke-width: 1; }
+.port-leader circle { fill: var(--bg); stroke: currentColor; stroke-width: 1.2; }
+.fleet-callout { position: absolute; pointer-events: auto; color: var(--fg-dim); font: .94rem/1.35 var(--read-serif); letter-spacing: .025em; }
+.fleet-callout span { position: absolute; top: 100%; left: 0; white-space: nowrap; padding-block: .2rem; }
+.fleet-callout:hover, .fleet-callout:focus-visible { color: var(--fg); text-decoration: underline; }
+.archive-stage.callouts-away + .archive-journey .project-orbit,
+.archive-stage.callouts-away .port-leader,
+.entering-projects :is(.project-orbit, .port-leader) { visibility: hidden; }
 .project-notes { max-width: 44rem; margin: 3rem auto; font-family: var(--read-serif); }
 .project-notes section { padding-block: 1rem; border-top: 1px solid var(--border); }
 .project-notes li { margin-block: .8rem; }
 .project-notes li small { display: block; margin-top: .15rem; color: var(--fg-dim); line-height: 1.5; }
-@media (max-aspect-ratio: 1/1) {
-  .project-orbit { top: clamp(11.25rem, 24svh, 15rem); height: calc(100svh - clamp(11.25rem, 24svh, 15rem) - clamp(5rem, 12svh, 8rem)); }
-  .project-ship { top: 48.5%; width: 20%; }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .entering-projects :is(.archive-arrival, .ship-plate, .escort:not(:nth-child(3))) {
     animation: project-depart 380ms ease-out both;

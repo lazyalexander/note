@@ -13,6 +13,10 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
   const moduleLinks = links.filter(link => modules.some(slot => link.hash === "#" + slot.id));
   const moon = document.getElementById("moon-light");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+  const ports = ["project", "archive"].map(name => ({
+    leader: document.getElementById(name + "-leader"),
+    link: document.getElementById(name + "-ship"),
+  })).filter(port => port.leader && port.link);
   let frame = 0, deskTop = 1, plateRect, viewport;
   let moonTimer = 0;
   let inside = false;
@@ -76,6 +80,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     if (Math.abs(goal - sceneY) < .4) sceneY = goal;
     else schedule();
     const view = archiveCameraFrame(sceneY, deskTop, viewport.height, reduce.matches);
+    stage.classList.toggle("callouts-away", goal > 24 || Boolean(boarding));
     const crossing = view.entry > 0 && view.entry < 1;
     stage.classList.toggle("at-window", crossing);
     if (crossing) {
@@ -92,6 +97,15 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     camera.setAttribute("transform", view.transform);
     stage.style.setProperty("--entry", view.entry);
     stage.style.setProperty("--approach", view.progress);
+    if (goal <= 24 && !boarding) {
+      for (const { leader, link } of ports) {
+        const bounds = leader.getBoundingClientRect();
+        link.style.left = bounds.left + "px";
+        link.style.top = bounds.top + "px";
+        link.style.width = bounds.width + "px";
+        link.style.height = bounds.height + "px";
+      }
+    }
     paintModules();
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(paint); }
@@ -139,6 +153,7 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
     if (reduce.matches || Math.abs(from - to) < 2) { arrive(); return; }
     const controller = new AbortController();
     boarding = controller;
+    stage.classList.toggle("callouts-away", true);
     // Direct manipulation always wins. Ordinary scrolling never starts a timed animation.
     for (const name of ["wheel", "touchstart", "pointerdown", "keydown", "pagehide", "resize"]) {
       window.addEventListener(name, cancelBoarding, { passive: true, signal: controller.signal });

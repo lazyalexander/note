@@ -129,7 +129,7 @@ function layout({ title, body, back, scripts, wide, homeLink = href("") }) {
 <script>(${installTheme.toString()})(${localTheme.toString()});</script>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 ${FONT_LINKS}
-<link rel="stylesheet" href="assets/style.css?v=65">
+<link rel="stylesheet" href="assets/style.css?v=70">
 <link rel="stylesheet" href="assets/code.css?v=47">
 </head>
 <body>
@@ -140,7 +140,7 @@ ${body}
 <p class="footer">note // tui</p>
 </div>`}
 ${statuslineHtml(homeLink)}
-<script type="module" src="assets/language.js?v=66"></script>
+<script type="module" src="assets/language.js?v=72"></script>
 ${scriptTags}
 <script type="module" src="assets/search-box.js?v=49"></script>
 </body>
@@ -386,6 +386,23 @@ ${railHtml(post)}
     return folders.flatMap((s) => s.posts).map((p) => `<li><a href="posts/${p.outName}">${escapeHtml(p.title)}<span aria-hidden="true">↗</span></a></li>`).join("\n");
   }
   const moduleNav = `<nav data-msg-aria-label="首页模块" aria-label="首页模块"><a href="#notebook">${ui("Blog 正文")}</a><a href="#site-about">${ui("关于本站")}</a><a href="#site-help">${ui("使用说明")}</a></nav>`;
+  const projects = [
+    ["an-agent", "通过将与软件互动和领域知识拆分，来支持低文字式的agent交互，以及高可复用流水线的搭建。", [
+      ["an-agent", "在本地调度智能体任务，管理执行权限并保存验收后的成果。"],
+      ["an-loom", "为开发者提供编写、校验和打包领域模块的工具。"],
+      ["an-spool", "将经过审查的领域知识和实现整理为可复用模块。"],
+      ["an-shuttle", "以嵌入式或mcp等方式控制传统软件的插件，服务于agent操作和软件协作。"],
+    ]],
+    ["DeepSeek Harness", "围绕 DeepSeek Harness 的插件实验。", [
+      ["dsh-alpha-memory", "基于完整记录的，agent记忆管理。"],
+      ["dsh-plugin-lumi-avatar", "文字交互的3D鲸鱼娘。"],
+      ["dsh-illusion", "实时展示三维模型的搭建过程，支持复杂角色的组装。"],
+    ]],
+  ];
+  const projectsBody = `<main class="project-notes"><a href="${href("#fleet")}">← ${ui("返回舰队")}</a>
+    <h1>${ui("项目介绍")}</h1>${projects.map(([name, summary, repos]) => `<section><h2>${name}</h2><p>${ui(summary)}</p>
+    <ul>${repos.map(([repo, description]) => `<li><a href="https://github.com/lazyalexander/${repo}">${repo} ↗</a><small>${ui(description)}</small></li>`).join("")}</ul></section>`).join("")}</main>`;
+  await writeFile(join(distDir, "projects.html"), layout({ title: "an-agent · DeepSeek Harness", body: projectsBody, scripts }));
   const indexBody = `<main class="home library archive-world" id="archive-world">
 <div class="archive-stage" aria-hidden="true">
   <div class="star-field">
@@ -453,6 +470,7 @@ ${railHtml(post)}
   </svg>
 </div>
 <section class="archive-journey" id="fleet" tabindex="-1" aria-labelledby="archive-title">
+  <div class="project-orbit"><a id="project-ship" class="project-ship" href="projects.html">${ui("项目介绍")} ↗</a></div>
   <div class="archive-arrival">
     <header class="archive-masthead">
       <span class="site-signature">~/note</span>
@@ -497,7 +515,7 @@ ${railHtml(post)}
 
   await writeFile(
     join(distDir, "index.html"),
-    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=59"></script>', wide: true })
+    layout({ title: "note", body: indexBody, back: false, scripts: pageScripts + '\n<script type="module" src="assets/archive-scroll.js?v=68"></script>', wide: true })
   );
   const searchBody = `<div class="wrap home search-page">
 <section class="sr-head">

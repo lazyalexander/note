@@ -3,6 +3,16 @@ export const languages = { zh: "中文", en: "English", ja: "日本語", el: "Ε
 // Source messages are also keys. Legacy keyboard help uses English source strings.
 export const messages = [
   ["语言","Language","言語","Γλώσσα"],
+  ["项目介绍","Projects","プロジェクト紹介","Έργα"],
+  ["通过将与软件互动和领域知识拆分，来支持低文字式的agent交互，以及高可复用流水线的搭建。","Separating software interaction from domain knowledge lets people work with agents using minimal text and build highly reusable pipelines.","ソフトウェア操作と専門知識を切り分けることで、少ないテキストでエージェントとやり取りし、再利用性の高いパイプラインを構築できます。","Ο διαχωρισμός του χειρισμού του λογισμικού από την εξειδικευμένη γνώση επιτρέπει την αλληλεπίδραση με πράκτορες με ελάχιστο κείμενο και τη δημιουργία ροών εργασίας με υψηλό βαθμό επαναχρησιμοποίησης."],
+  ["围绕 DeepSeek Harness 的插件实验。","Plugin experiments for DeepSeek Harness.","DeepSeek Harness 向けのプラグイン実験。","Πειραματικά πρόσθετα για το DeepSeek Harness."],
+  ["在本地调度智能体任务，管理执行权限并保存验收后的成果。","Schedules local agent tasks, manages permissions and keeps accepted results.","ローカルでタスクを割り当て、実行権限と検収済みの成果物を管理します。","Προγραμματίζει τοπικές εργασίες πρακτόρων, διαχειρίζεται δικαιώματα και αποθηκεύει τα εγκεκριμένα αποτελέσματα."],
+  ["为开发者提供编写、校验和打包领域模块的工具。","Provides tools to author, validate and package domain modules.","分野別モジュールを作成・検証・パッケージ化する開発ツールです。","Παρέχει εργαλεία συγγραφής, ελέγχου και συσκευασίας εξειδικευμένων μονάδων."],
+  ["将经过审查的领域知识和实现整理为可复用模块。","Collects reviewed domain knowledge and implementations in reusable modules.","レビュー済みの専門知識と実装を再利用可能なモジュールにまとめます。","Οργανώνει ελεγμένη εξειδικευμένη γνώση και υλοποιήσεις σε επαναχρησιμοποιήσιμες μονάδες."],
+  ["以嵌入式或mcp等方式控制传统软件的插件，服务于agent操作和软件协作。","Plugins that let agents operate traditional software and coordinate work across applications through embedded integrations, MCP and other interfaces.","組み込みや MCP などを通じて既存のソフトウェアを制御し、エージェントによる操作やアプリ間の連携を支えるプラグインです。","Πρόσθετα που επιτρέπουν στους πράκτορες να χειρίζονται συμβατικές εφαρμογές και να συντονίζουν τη συνεργασία τους μέσω ενσωμάτωσης, MCP και άλλων διεπαφών."],
+  ["基于完整记录的，agent记忆管理。","Agent memory management based on a complete conversation history.","会話の全記録に基づくエージェントの記憶管理。","Διαχείριση της μνήμης του πράκτορα με βάση το πλήρες ιστορικό της συνομιλίας."],
+  ["文字交互的3D鲸鱼娘。","A 3D whale-girl avatar you can interact with through text.","テキストでやり取りできる3Dのクジラ娘。","Ένας τρισδιάστατος χαρακτήρας κοριτσιού-φάλαινας με τον οποίο επικοινωνείς μέσω κειμένου."],
+  ["实时展示三维模型的搭建过程，支持复杂角色的组装。","Shows 3D models being built live and supports complex character assembly.","3D モデルの制作過程をリアルタイムで表示し、複雑なキャラクターの組み立てを支援します。","Εμφανίζει ζωντανά την κατασκευή τρισδιάστατων μοντέλων και υποστηρίζει τη συναρμολόγηση σύνθετων χαρακτήρων."],
   ["舰上手记","Shipboard notes","艦上手記","Σημειώσεις εν πλω"],
   ["档案舱","Archive cabin","資料室","Θάλαμος αρχείου"],
   ["进入档案舱","Enter the archive","資料室に入る","Είσοδος στο αρχείο"],

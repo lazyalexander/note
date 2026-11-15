@@ -1210,3 +1210,28 @@ html:has(.archive-world) { scroll-behavior: auto; }
 
 html:lang(zh) .article-en,
 html:not(:lang(zh)) .article-zh { display: none; }
+
+.project-orbit { position: absolute; z-index: 1; top: 0; left: 50%; width: min(100vw, 184svh); height: 100svh; transform: translateX(-50%); pointer-events: none; }
+.project-ship { position: absolute; left: 15.5%; top: 50%; width: 14%; aspect-ratio: 4/3; transform: translate(-50%, -50%); display: flex; align-items: end; justify-content: center; gap: .3em; white-space: nowrap; color: var(--fg); pointer-events: auto; font: .9rem var(--read-serif); }
+.project-ship:hover, .project-ship:focus-visible { text-decoration: underline; }
+.project-notes { max-width: 44rem; margin: 3rem auto; font-family: var(--read-serif); }
+.project-notes section { padding-block: 1rem; border-top: 1px solid var(--border); }
+.project-notes li { margin-block: .8rem; }
+.project-notes li small { display: block; margin-top: .15rem; color: var(--fg-dim); line-height: 1.5; }
+@media (max-aspect-ratio: 1/1) {
+  .project-orbit { top: clamp(11.25rem, 24svh, 15rem); height: calc(100svh - clamp(11.25rem, 24svh, 15rem) - clamp(5rem, 12svh, 8rem)); }
+  .project-ship { top: 48.5%; width: 20%; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .entering-projects :is(.archive-arrival, .ship-plate, .escort:not(:nth-child(3))) {
+    animation: project-depart 380ms ease-out both;
+  }
+  .entering-projects .project-ship { text-decoration: underline; }
+  .project-notes { animation: project-arrive 420ms ease-out both; }
+  @keyframes project-depart { to { opacity: .06; } }
+  @keyframes project-arrive {
+    from { opacity: 0; translate: 0 .75rem; }
+    to { opacity: 1; translate: 0 0; }
+  }
+}

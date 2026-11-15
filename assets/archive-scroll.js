@@ -216,3 +216,19 @@ import { archiveCameraFrame, cabinThreshold, moonLightPath, windowAperture } fro
   refreshMoon();
   measure();
 })();
+
+// Keep modified clicks and reduced-motion navigation native.
+const projectLink = document.getElementById("project-ship");
+projectLink?.addEventListener("click", event => {
+  if (event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  event.preventDefault();
+  const world = projectLink.closest(".archive-world");
+  if (world.classList.contains("entering-projects")) return;
+  world.classList.add("entering-projects");
+  const timer = window.setTimeout(() => location.assign(projectLink.href), 420);
+  window.addEventListener("pagehide", () => {
+    clearTimeout(timer);
+    world.classList.remove("entering-projects");
+  }, { once: true });
+});
